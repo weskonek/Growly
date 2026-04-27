@@ -6,23 +6,21 @@ on:
       - main
       - develop
     paths:
-      - 'backend/**'
-      - '.github/workflows/backend.yml'
+      - backend/**
+      - .github/workflows/backend.yml
+
   pull_request:
     branches:
       - main
       - develop
     paths:
-      - 'backend/**'
+      - backend/**
 
 env:
   SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
   SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
 jobs:
-  # ============================================
-  # LINT & CHECK
-  # ============================================
   lint:
     name: Lint SQL Migrations
     runs-on: ubuntu-latest
@@ -35,23 +33,11 @@ jobs:
         run: |
           for file in backend/supabase/migrations/*.sql; do
             echo "Checking $file..."
-            # Basic syntax check (grep for common issues)
             if grep -q "DROP TABLE.*CASCADE" "$file"; then
               echo "WARNING: DROP TABLE CASCADE found in $file"
             fi
           done
-          echo "SQL lint completed"
 
-      - name: Validate config.toml
-        run: |
-          if [ -f backend/supabase/config.toml ]; then
-            echo "config.toml exists"
-            grep -q "project_id" backend/supabase/config.toml && echo "project_id found"
-          fi
-
-  # ============================================
-  # DATABASE MIGRATION (Staging)
-  # ============================================
   migrate-staging:
     name: Migrate Staging Database
     runs-on: ubuntu-latest
@@ -62,23 +48,17 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
       - name: Setup Supabase CLI
         run: npm install -g supabase
-
       - name: Link to Staging Project
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_STAGING }}
         run: supabase link --project-ref ${{ env.SUPABASE_PROJECT_REF_STAGING }}
-
-      - name: Apply Migrations
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_STAGING }}
-        run: supabase db push --db-url ${{ secrets.SUPABASE_DB_URL_STAGING }}
+      - name: Apply Migrations
+        run: supabase db push
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_STAGING }}
 
-  # ============================================
-  # DATABASE MIGRATION (Production)
-  # ============================================
   migrate-production:
     name: Migrate Production Database
     runs-on: ubuntu-latest
@@ -89,25 +69,19 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
       - name: Setup Supabase CLI
         run: npm install -g supabase
-
       - name: Link to Production Project
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_PRODUCTION }}
         run: supabase link --project-ref ${{ env.SUPABASE_PROJECT_REF }}
-
-      - name: Apply Migrations
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_PRODUCTION }}
-        run: supabase db push --db-url ${{ secrets.SUPABASE_DB_URL_PRODUCTION }}
+      - name: Apply Migrations
+        run: supabase db push
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_PRODUCTION }}
 
-  # ============================================
-  # DEPLOY EDGE FUNCTIONS (Staging)
-  # ============================================
   deploy-functions-staging:
-    name: Deploy Edge Functions (Staging)
+    name: Deploy Edge Functions Staging
     runs-on: ubuntu-latest
     needs: migrate-staging
     if: github.ref == 'refs/heads/develop'
@@ -116,31 +90,21 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
       - name: Setup Supabase CLI
         run: npm install -g supabase
-
       - name: Link to Staging Project
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_STAGING }}
         run: supabase link --project-ref ${{ env.SUPABASE_PROJECT_REF_STAGING }}
-
-      - name: Deploy AI Tutor Function
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_STAGING }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY_STAGING }}
+      - name: Deploy AI Tutor Function
         run: |
           supabase secrets set GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY_STAGING }}
           supabase functions deploy ai-tutor --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_STAGING }}
 
-      - name: Verify Deployment
-        run: supabase functions list
-
-  # ============================================
-  # DEPLOY EDGE FUNCTIONS (Production)
-  # ============================================
   deploy-functions-production:
-    name: Deploy Edge Functions (Production)
+    name: Deploy Edge Functions Production
     runs-on: ubuntu-latest
     needs: migrate-production
     if: github.ref == 'refs/heads/main'
@@ -149,29 +113,19 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
       - name: Setup Supabase CLI
         run: npm install -g supabase
-
       - name: Link to Production Project
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_PRODUCTION }}
         run: supabase link --project-ref ${{ env.SUPABASE_PROJECT_REF }}
-
-      - name: Deploy AI Tutor Function
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_PRODUCTION }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY_PRODUCTION }}
+      - name: Deploy AI Tutor Function
         run: |
           supabase secrets set GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY_PRODUCTION }}
           supabase functions deploy ai-tutor --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_PRODUCTION }}
 
-      - name: Verify Deployment
-        run: supabase functions list
-
-  # ============================================
-  # TEST EDGE FUNCTION (on PR)
-  # ============================================
   test-edge-function:
     name: Test Edge Function
     runs-on: ubuntu-latest
@@ -181,46 +135,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
       - name: Setup Deno
         uses: denoland/setup-deno@v1
         with:
           deno-version: v1.x
-
       - name: Type Check AI Tutor
         run: |
           cd backend/supabase/functions/ai-tutor
           deno check index.ts
-
-      - name: Run Safety Check
-        run: |
-          cd backend/supabase/functions/ai-tutor
-          deno run --allow-read safety.ts 2>/dev/null || echo "Safety module loads correctly"
-
-  # ============================================
-  # NOTIFICATION
-  # ============================================
-  notify-success:
-    name: Notify Success
-    runs-on: ubuntu-latest
-    needs: [deploy-functions-staging, deploy-functions-production]
-    if: always() && (needs.deploy-functions-staging.result == 'success' || needs.deploy-functions-production.result == 'success')
-    steps:
-      - name: Success Notification
-        run: |
-          echo "Backend deployment completed successfully!"
-          echo "Branch: ${{ github.ref_name }}"
-          echo "Run ID: ${{ github.run_id }}"
-
-  notify-failure:
-    name: Notify Failure
-    runs-on: ubuntu-latest
-    needs: [deploy-functions-staging, deploy-functions-production]
-    if: failure()
-    steps:
-      - name: Failure Notification
-        run: |
-          echo "Backend deployment FAILED!"
-          echo "Branch: ${{ github.ref_name }}"
-          echo "Run ID: ${{ github.run_id }}"
-          echo "Check logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
