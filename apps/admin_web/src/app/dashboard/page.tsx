@@ -53,7 +53,14 @@ async function getRecentFlaggedSessions() {
     .order('created_at', { ascending: false })
     .limit(5)
 
-  return data ?? []
+  return (data as unknown as {
+    id: string
+    flagged: boolean
+    flag_reason: string | null
+    created_at: string
+    mode: string
+    child_profiles: { name: string; age_group: number } | null
+  }[]) ?? []
 }
 
 async function getRecentUsers() {
@@ -98,7 +105,7 @@ export default async function DashboardPage() {
           title="Total Children"
           value={metrics.totalChildren}
           description="Registered child profiles"
-          icon={Child}
+          icon={UserCircle}
         />
         <MetricsCard
           title="Active Today"

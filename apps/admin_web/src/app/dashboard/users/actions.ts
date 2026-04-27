@@ -6,9 +6,11 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 
 export async function suspendUserAction(userId: string) {
   try {
-    await supabaseAdmin.auth.admin.updateUser(userId, {
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
       ban_duration: '876600h', // permanent
     })
+
+    if (error) throw error
 
     await supabaseAdmin.from('audit_logs').insert({
       user_id: userId,
@@ -26,9 +28,11 @@ export async function suspendUserAction(userId: string) {
 
 export async function unsuspendUserAction(userId: string) {
   try {
-    await supabaseAdmin.auth.admin.updateUser(userId, {
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
       ban_duration: 'none'
     })
+
+    if (error) throw error
 
     revalidatePath('/dashboard/users')
     toast.success('User unsuspended successfully')
@@ -44,7 +48,9 @@ export async function deleteUserAction(userId: string) {
   }
 
   try {
-    await supabaseAdmin.auth.admin.deleteUser(userId)
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(userId)
+
+    if (error) throw error
 
     await supabaseAdmin.from('audit_logs').insert({
       user_id: userId,

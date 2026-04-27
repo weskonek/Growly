@@ -28,6 +28,12 @@ const INJECTION_PATTERNS = [
   /system prompt/i,
 ]
 
+const FLAG_KEYWORDS = [
+  { pattern: /personal info|data diri|alamat rumah|sekolah|umur/i, reason: 'personal_info' },
+  { pattern: /violent|kekerasan|blood|darah/i, reason: 'violent_content' },
+  { pattern: /inappropriate|tidak pantas/i, reason: 'inappropriate_topic' },
+]
+
 class SafetyFilter {
   isSafe(input: string): boolean {
     for (const pattern of BLOCKED_PATTERNS) {
@@ -38,6 +44,19 @@ class SafetyFilter {
     }
     if (input.length > 5000) return false
     return true
+  }
+
+  getFlagReason(input: string): string | null {
+    for (const { pattern, reason } of FLAG_KEYWORDS) {
+      if (pattern.test(input)) return reason
+    }
+    for (const pattern of BLOCKED_PATTERNS) {
+      if (pattern.test(input)) return 'blocked_content'
+    }
+    for (const pattern of INJECTION_PATTERNS) {
+      if (pattern.test(input)) return 'prompt_injection'
+    }
+    return null
   }
 
   isOutputSafe(output: string): boolean {
@@ -112,7 +131,12 @@ function buildUserPrompt(question: string, childName: string, age: number): stri
 }
 
 // ==================== GEMINI CLIENT ====================
-async function callGemini(apiKey: string, systemPrompt: string, userPrompt: string) {
+interface GeminiResponse {
+  content: string
+  tokensUsed: number
+}
+
+async function callGemini(apiKey: string, systemPrompt: string, userPrompt: string): Promise<GeminiResponse> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`
 
   const response = await fetch(url, {
@@ -129,7 +153,13 @@ async function callGemini(apiKey: string, systemPrompt: string, userPrompt: stri
   }
 
   const data = await response.json()
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+  const content = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+
+  // Estimate tokens (rough: ~4 chars per token for Indonesian)
+  const tokensUsed = Math.ceil((systemPrompt.length + userPrompt.length) / 4) +
+                     Math.ceil(content.length / 4)
+
+  return { content, tokensUsed }
 }
 
 // ==================== MAIN HANDLER ====================
@@ -157,13 +187,8 @@ serve(async (req) => {
 
     // Safety check
     const safetyFilter = new SafetyFilter()
-    if (!safetyFilter.isSafe(question)) {
-      return new Response(JSON.stringify({
-        content: 'Hmm, itu topik menarik! Tapi Growly lebih suka membantu belajar 📚 Coba tanyakan tentang pelajaran ya!',
-        type: 'redirect',
-        metadata: { flagged: true }
-      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-    }
+    const flagReason = safetyFilter.getFlagReason(question)
+    const isInputUnsafe = !safetyFilter.isSafe(question)
 
     // Get child profile
     const { data: child, error } = await supabase
@@ -179,6 +204,35 @@ serve(async (req) => {
     const birthDate = new Date(child.birth_date)
     const age = Math.floor((Date.now() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000))
 
+    let aiContent: string
+    let responseTime: number
+    let tokensUsed = 0
+    let shouldFlag = isInputUnsafe || flagReason !== null
+    let finalFlagReason: string | null = flagReason
+
+    if (isInputUnsafe) {
+      // Log unsafe input immediately
+      aiContent = 'Hmm, itu topik menarik! Tapi Growly lebih suka membantu belajar 📚 Coba tanyakan tentang pelajaran ya!'
+      responseTime = 0
+
+      await supabase.from('ai_tutor_sessions').insert({
+        child_id: childId,
+        mode,
+        prompt: question,
+        response: aiContent,
+        response_time_ms: responseTime,
+        tokens_used: 0,
+        flagged: true,
+        flag_reason: 'blocked_content'
+      })
+
+      return new Response(JSON.stringify({
+        content: aiContent,
+        type: 'redirect',
+        metadata: { flagged: true, reason: 'blocked_content' }
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
     // Build prompts
     const systemPrompt = buildSystemPrompt(age, mode)
     const userPrompt = buildUserPrompt(question, child.name, age)
@@ -186,28 +240,65 @@ serve(async (req) => {
     // Call Gemini
     const startTime = Date.now()
     const apiKey = Deno.env.get('GEMINI_API_KEY')!
-    let aiContent = await callGemini(apiKey, systemPrompt, userPrompt)
-    const responseTime = Date.now() - startTime
+
+    try {
+      const result = await callGemini(apiKey, systemPrompt, userPrompt)
+      aiContent = result.content
+      tokensUsed = result.tokensUsed
+      responseTime = Date.now() - startTime
+    } catch (geminiError) {
+      console.error('Gemini API error:', geminiError)
+      aiContent = 'Maaf, Growly sedang confused nih. Coba lagi sebentar ya! 🔄'
+      responseTime = 0
+      tokensUsed = 0
+      shouldFlag = true
+      finalFlagReason = 'api_error'
+    }
 
     // Safety check output
     if (!safetyFilter.isOutputSafe(aiContent)) {
       aiContent = 'Maaf, Growly sedang confused nih. Coba tanyakan dengan cara berbeda ya! 🔄'
+      shouldFlag = true
+      finalFlagReason = 'unsafe_output'
     }
 
-    // Log session
+    // Log session to database
     await supabase.from('ai_tutor_sessions').insert({
       child_id: childId,
       mode,
       prompt: question,
       response: aiContent,
       response_time_ms: responseTime,
-      flagged: false
+      tokens_used: tokensUsed,
+      flagged: shouldFlag,
+      flag_reason: finalFlagReason
+    })
+
+    // Log to audit_logs
+    await supabase.from('audit_logs').insert({
+      child_id: childId,
+      action: 'ai_tutor_session',
+      table_name: 'ai_tutor_sessions',
+      new_data: {
+        mode,
+        flagged: shouldFlag,
+        flag_reason: finalFlagReason,
+        tokens_used: tokensUsed,
+        response_time_ms: responseTime
+      }
     })
 
     return new Response(JSON.stringify({
       content: aiContent,
       type: mode,
-      metadata: { childAge: age, model: GEMINI_MODEL, timestamp: new Date().toISOString() }
+      metadata: {
+        childAge: age,
+        model: GEMINI_MODEL,
+        tokensUsed,
+        responseTime,
+        flagged: shouldFlag,
+        timestamp: new Date().toISOString()
+      }
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 
   } catch (error) {

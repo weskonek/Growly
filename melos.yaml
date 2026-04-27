@@ -8,6 +8,19 @@ packages:
   - packages/growly_ai_tutor
   - packages/growly_parental_control
 
+command:
+  bootstrap:
+    useWorkspace: true
+    runPubGet: true
+    ignoreScripts: false
+
+  version:
+    independent: true
+
+  publish:
+    allowUnpublish: false
+    skipConfirmation: false
+
 scripts:
   analyze:
     run: melos exec -- flutter analyze
@@ -26,11 +39,13 @@ scripts:
     description: Clean all packages
 
   build:android:parent:
-    run: cd apps/parent_app && flutter build apk --release
+    exec: flutter build apk --release
+    package: apps/parent_app
     description: Build parent app for Android
 
   build:android:child:
-    run: cd apps/child_app && flutter build apk --release
+    exec: flutter build apk --release
+    package: apps/child_app
     description: Build child app for Android
 
 ide:

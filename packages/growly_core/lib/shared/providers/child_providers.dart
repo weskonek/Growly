@@ -1,5 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/database/remote/supabase_service.dart';
 import '../../domain/models/child_profile.dart';
 
 part 'child_providers.g.dart';
@@ -22,7 +22,7 @@ class CurrentChild extends _$CurrentChild {
 class ChildrenList extends _$ChildrenList {
   @override
   Future<List<ChildProfile>> build() async {
-    final supabase = Supabase.instance.client;
+    final supabase = SupabaseService.client;
     final user = supabase.auth.currentUser;
     if (user == null) return [];
 
@@ -56,7 +56,7 @@ class SelectedChildId extends _$SelectedChildId {
 class ChildProgress extends _$ChildProgress {
   @override
   Future<Map<String, dynamic>> build(String childId) async {
-    final supabase = Supabase.instance.client;
+    final supabase = SupabaseService.client;
 
     final progress = await supabase
         .from('learning_progress')

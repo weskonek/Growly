@@ -4,7 +4,33 @@ import { Badge } from '@/components/ui/badge'
 import { BotMessageSquare, AlertTriangle, Check } from 'lucide-react'
 import { AiModerationActions } from './actions-client'
 
-async function getFlaggedSessions() {
+interface SessionWithRelations {
+  id: string
+  flagged: boolean
+  flag_reason: string | null
+  created_at: string
+  mode: string
+  tokens_used: number | null
+  response_time_ms: number | null
+  child_profiles: {
+    id: string
+    name: string
+    age_group: number
+    parent_profiles: {
+      id: string
+      name: string
+      email: string
+    }
+  } | null
+  ai_tutor_messages: {
+    id: string
+    role: 'user' | 'assistant'
+    content: string
+    created_at: string
+  }[]
+}
+
+async function getFlaggedSessions(): Promise<SessionWithRelations[]> {
   const { data } = await supabaseAdmin
     .from('ai_tutor_sessions')
     .select(`
@@ -36,7 +62,7 @@ async function getFlaggedSessions() {
     .order('created_at', { ascending: false })
     .limit(50)
 
-  return data ?? []
+  return (data as unknown as SessionWithRelations[]) ?? []
 }
 
 export default async function AIModerationPage() {

@@ -19,7 +19,20 @@ const ageGroupLabels: Record<number, string> = {
   3: 'Teen (13-18)',
 }
 
-async function getChildren() {
+interface ChildWithParent {
+  id: string
+  name: string
+  birth_date: string
+  age_group: number
+  is_active: boolean
+  created_at: string
+  parent_profiles: {
+    name: string
+    email: string
+  } | null
+}
+
+async function getChildren(): Promise<ChildWithParent[]> {
   const { data } = await supabaseAdmin
     .from('child_profiles')
     .select(`
@@ -33,7 +46,7 @@ async function getChildren() {
     `)
     .order('created_at', { ascending: false })
 
-  return data ?? []
+  return (data as unknown as ChildWithParent[]) ?? []
 }
 
 export default async function ChildrenPage() {
@@ -73,9 +86,9 @@ export default async function ChildrenPage() {
                   <TableCell className="font-medium">{child.name}</TableCell>
                   <TableCell>
                     <div>
-                      <p>{child.parent_profiles?.name}</p>
+                      <p>{child.parent_profiles?.name ?? 'Unknown'}</p>
                       <p className="text-xs text-muted-foreground">
-                        {child.parent_profiles?.email}
+                        {child.parent_profiles?.email ?? 'No email'}
                       </p>
                     </div>
                   </TableCell>

@@ -1,5 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/database/remote/supabase_service.dart';
 
 part 'auth_providers.g.dart';
 
@@ -7,18 +8,18 @@ part 'auth_providers.g.dart';
 class AuthNotifier extends _$AuthNotifier {
   @override
   User? build() {
-    return Supabase.instance.client.auth.currentUser;
+    return SupabaseService.client.auth.currentUser;
   }
 
   Stream<User?> get authStateChanges {
-    return Supabase.instance.client.auth.onAuthStateChange.map((event) => event.session?.user);
+    return SupabaseService.client.auth.onAuthStateChange.map((event) => event.session?.user);
   }
 
   Future<void> signIn({
     required String email,
     required String password,
   }) async {
-    await Supabase.instance.client.auth.signInWithPassword(
+    await SupabaseService.client.auth.signInWithPassword(
       email: email,
       password: password,
     );
@@ -29,7 +30,7 @@ class AuthNotifier extends _$AuthNotifier {
     required String password,
     String? name,
   }) async {
-    await Supabase.instance.client.auth.signUp(
+    await SupabaseService.client.auth.signUp(
       email: email,
       password: password,
       data: {'name': name},
@@ -37,11 +38,11 @@ class AuthNotifier extends _$AuthNotifier {
   }
 
   Future<void> signOut() async {
-    await Supabase.instance.client.auth.signOut();
+    await SupabaseService.client.auth.signOut();
   }
 
   Future<void> resetPassword(String email) async {
-    await Supabase.instance.client.auth.resetPasswordForEmail(email);
+    await SupabaseService.client.auth.resetPasswordForEmail(email);
   }
 }
 
