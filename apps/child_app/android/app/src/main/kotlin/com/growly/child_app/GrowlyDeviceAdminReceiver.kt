@@ -3,6 +3,7 @@ package com.growly.child_app
 import android.app.admin.DeviceAdminReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.UserHandle
 import android.widget.Toast
 
 /**
@@ -35,8 +36,8 @@ class GrowlyDeviceAdminReceiver : DeviceAdminReceiver() {
         // This ensures child app returns to normal mode
     }
 
-    override fun onPasswordFailed(context: Context, intent: Intent, workProfileId: Int) {
-        super.onPasswordFailed(context, intent, workProfileId)
+    override fun onPasswordFailed(context: Context, intent: Intent, userHandle: UserHandle) {
+        super.onPasswordFailed(context, intent, userHandle)
         // Track failed attempts for security monitoring
         val prefs = context.getSharedPreferences("growly_parental", Context.MODE_PRIVATE)
         val failedAttempts = prefs.getInt("failed_password_attempts", 0) + 1
