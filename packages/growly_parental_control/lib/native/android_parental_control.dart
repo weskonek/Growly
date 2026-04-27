@@ -127,4 +127,16 @@ class AndroidParentalControl extends _$AndroidParentalControl {
       return [];
     }
   }
+
+  Future<void> openUsageAccessSettings() async {
+    await _channel.invokeMethod('openUsageAccessSettings');
+  }
+
+  Future<void> openAccessibilitySettings() async {
+    await _channel.invokeMethod('openAccessibilitySettings');
+  }
+
+  Future<void> removeDeviceAdmin() async {
+    await _channel.invokeMethod('removeDeviceAdmin');
+  }
 }
