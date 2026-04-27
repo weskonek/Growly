@@ -1,14 +1,7 @@
 import 'package:flutter/services.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-part 'android_parental_control.g.dart';
-
-@riverpod
-class AndroidParentalControl extends _$AndroidParentalControl {
+class AndroidParentalControl {
   static const _channel = MethodChannel('com.growly/android_parental_control');
-
-  @override
-  bool build() => true;
 
   Future<bool> checkUsageStatsPermission() async {
     try {
@@ -140,3 +133,10 @@ class AndroidParentalControl extends _$AndroidParentalControl {
     await _channel.invokeMethod('removeDeviceAdmin');
   }
 }
+
+/// Provider for AndroidParentalControl
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+final androidParentalControlProvider = Provider<AndroidParentalControl>((ref) {
+  return AndroidParentalControl();
+});
