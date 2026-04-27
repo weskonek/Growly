@@ -27,8 +27,7 @@ class SyncService {
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: table,
-          column: 'child_id',
-          value: childId,
+          filter: Filter.eq('child_id', childId),
           callback: (payload) => payload.newRecord,
         )
         .map((change) => change.newRecord as Map<String, dynamic>);
