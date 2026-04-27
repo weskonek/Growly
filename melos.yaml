@@ -5,8 +5,6 @@ packages:
   - apps/child_app
   - packages/growly_core
   - packages/growly_ui_kit
-  - packages/growly_ai_tutor
-  - packages/growly_parental_control
 
 command:
   bootstrap:
