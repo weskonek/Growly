@@ -16,7 +16,7 @@ dependencies:
   growly_core:
     path: ../../packages/core
   growly_ui_kit:
-    path: ../../packages/ui_kit
+    path: ../../packages/growly_ui_kit
 
   # State management
   flutter_riverpod: ^2.5.1

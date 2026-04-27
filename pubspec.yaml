@@ -1,0 +1,11 @@
+name: growly
+description: Growly monorepo
+version: 1.0.0
+
+environment:
+  sdk: ^3.11.0
+
+publish_to: none
+
+dev_dependencies:
+  melos: ^7.5.0
