@@ -22,17 +22,14 @@ class SyncService {
 
   Stream<Map<String, dynamic>> watchTable(String table, String childId) {
     return _supabase
-        .channel('table-changes-$table')
+        .channel('table-changes-$table-$childId')
         .onPostgresChanges(
+          event: PostgresChangeEvent.all,
           schema: 'public',
           table: table,
-          filter: PostgresChangeFilter(
-            type: PostgresChangeEvent.all,
-            schema: 'public',
-            table: table,
-            columns: ['*'],
-          ),
-          event: PostgresChangeEvent.all,
+          column: 'child_id',
+          value: childId,
+          callback: (payload) => payload.newRecord,
         )
         .map((change) => change.newRecord as Map<String, dynamic>);
   }
