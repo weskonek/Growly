@@ -18,8 +18,8 @@ class LearningRepositoryImpl implements ILearningRepository {
           .order('created_at', ascending: false)
           .limit(limit);
 
-      final progress = (response as List)
-          .map((json) => LearningProgress.fromJson(json as Map<String, dynamic>))
+      final progress = response
+          .map((json) => LearningProgress.fromJson(Map<String, dynamic>.from(json)))
           .toList();
 
       return (progress, null);
@@ -49,8 +49,8 @@ class LearningRepositoryImpl implements ILearningRepository {
 
       final response = await query.order('started_at', ascending: false);
 
-      final sessions = (response as List)
-          .map((json) => LearningSession.fromJson(json as Map<String, dynamic>))
+      final sessions = response
+          .map((json) => LearningSession.fromJson(Map<String, dynamic>.from(json)))
           .toList();
 
       return (sessions, null);
@@ -70,7 +70,7 @@ class LearningRepositoryImpl implements ILearningRepository {
           .select()
           .single();
 
-      return (LearningProgress.fromJson(response as Map<String, dynamic>), null);
+      return (LearningProgress.fromJson(Map<String, dynamic>.from(response)), null);
     } catch (e) {
       return (null, DatabaseFailure(message: e.toString()));
     }
@@ -89,7 +89,7 @@ class LearningRepositoryImpl implements ILearningRepository {
           .select()
           .single();
 
-      return (LearningSession.fromJson(response as Map<String, dynamic>), null);
+      return (LearningSession.fromJson(Map<String, dynamic>.from(response)), null);
     } catch (e) {
       return (null, DatabaseFailure(message: e.toString()));
     }
@@ -118,7 +118,7 @@ class LearningRepositoryImpl implements ILearningRepository {
           .select()
           .single();
 
-      return (LearningSession.fromJson(response as Map<String, dynamic>), null);
+      return (LearningSession.fromJson(Map<String, dynamic>.from(response)), null);
     } catch (e) {
       return (null, DatabaseFailure(message: e.toString()));
     }
@@ -138,9 +138,9 @@ class LearningRepositoryImpl implements ILearningRepository {
           .eq('child_id', childId);
 
       return ({
-        'totalActivities': (progress as List).length,
-        'completedActivities': (progress as List).where((p) => p['completed'] == true).length,
-        'totalSessions': (sessions as List).length,
+        'totalActivities': progress.length,
+        'completedActivities': progress.where((p) => p['completed'] == true).length,
+        'totalSessions': sessions.length,
         'records': progress,
       }, null);
     } catch (e) {

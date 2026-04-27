@@ -22,8 +22,8 @@ class ScreenTimeRepositoryImpl implements IScreenTimeRepository {
           .gte('date', startOfDay.toIso8601String())
           .lt('date', endOfDay.toIso8601String());
 
-      final records = (response as List)
-          .map((json) => ScreenTimeRecord.fromJson(json as Map<String, dynamic>))
+      final records = response
+          .map((json) => ScreenTimeRecord.fromJson(Map<String, dynamic>.from(json)))
           .toList();
 
       return (records, null);
@@ -69,7 +69,7 @@ class ScreenTimeRepositoryImpl implements IScreenTimeRepository {
         ), null);
       }
 
-      return (ScreenTimeSettings.fromJson(response as Map<String, dynamic>), null);
+      return (ScreenTimeSettings.fromJson(Map<String, dynamic>.from(response)), null);
     } catch (e) {
       return (null, DatabaseFailure(message: e.toString()));
     }
@@ -86,7 +86,7 @@ class ScreenTimeRepositoryImpl implements IScreenTimeRepository {
           .select()
           .single();
 
-      return (ScreenTimeSettings.fromJson(response as Map<String, dynamic>), null);
+      return (ScreenTimeSettings.fromJson(Map<String, dynamic>.from(response)), null);
     } catch (e) {
       return (null, DatabaseFailure(message: e.toString()));
     }

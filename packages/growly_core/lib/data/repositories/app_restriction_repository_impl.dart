@@ -38,7 +38,7 @@ class AppRestrictionRepositoryImpl implements IAppRestrictionRepository {
           .select()
           .single();
 
-      return (AppRestriction.fromJson(response as Map<String, dynamic>), null);
+      return (AppRestriction.fromJson(Map<String, dynamic>.from(response)), null);
     } catch (e) {
       return (null, DatabaseFailure(message: e.toString()));
     }
@@ -84,7 +84,7 @@ class AppRestrictionRepositoryImpl implements IAppRestrictionRepository {
           .select()
           .single();
 
-      return (Schedule.fromJson(response as Map<String, dynamic>), null);
+      return (Schedule.fromJson(Map<String, dynamic>.from(response)), null);
     } catch (e) {
       return (null, DatabaseFailure(message: e.toString()));
     }

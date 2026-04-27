@@ -17,8 +17,8 @@ on:
       - backend/**
 
 env:
-  SUPABASE_PROJECT_REF: scfgcegyvgkxntqmmerl
-  SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+  SUPABASE_PROJECT_REF_DEV: scfgcegyvgkxntqmmerl
+  SUPABASE_PROJECT_REF_PROD: ${{ vars.SUPABASE_PROJECT_REF_PROD }}
 
 jobs:
   lint:
@@ -38,33 +38,31 @@ jobs:
             fi
           done
 
-  migrate-staging:
-    name: Migrate Staging Database
+  migrate-dev:
+    name: Migrate Dev Database
     runs-on: ubuntu-latest
     needs: lint
     if: github.ref == 'refs/heads/develop'
-    environment: staging
     timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
       - name: Setup Supabase CLI
         run: npm install -g supabase
-      - name: Link to Staging Project
-        run: supabase link --project-ref ${{ env.SUPABASE_PROJECT_REF_STAGING }}
+      - name: Link to Dev Project
+        run: supabase link --project-ref ${{ env.SUPABASE_PROJECT_REF_DEV }}
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_STAGING }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_DEV }}
       - name: Apply Migrations
         run: supabase db push
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_STAGING }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_DEV }}
 
   migrate-production:
     name: Migrate Production Database
     runs-on: ubuntu-latest
     needs: lint
     if: github.ref == 'refs/heads/main'
-    environment: production
     timeout-minutes: 15
 
     steps:
@@ -72,43 +70,41 @@ jobs:
       - name: Setup Supabase CLI
         run: npm install -g supabase
       - name: Link to Production Project
-        run: supabase link --project-ref ${{ env.SUPABASE_PROJECT_REF }}
+        run: supabase link --project-ref ${{ env.SUPABASE_PROJECT_REF_PROD }}
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_PRODUCTION }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_PROD }}
       - name: Apply Migrations
         run: supabase db push
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_PRODUCTION }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_PROD }}
 
-  deploy-functions-staging:
-    name: Deploy Edge Functions Staging
+  deploy-functions-dev:
+    name: Deploy Edge Functions Dev
     runs-on: ubuntu-latest
-    needs: migrate-staging
+    needs: migrate-dev
     if: github.ref == 'refs/heads/develop'
-    environment: staging
     timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@v4
       - name: Setup Supabase CLI
         run: npm install -g supabase
-      - name: Link to Staging Project
-        run: supabase link --project-ref ${{ env.SUPABASE_PROJECT_REF_STAGING }}
+      - name: Link to Dev Project
+        run: supabase link --project-ref ${{ env.SUPABASE_PROJECT_REF_DEV }}
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_STAGING }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_DEV }}
       - name: Deploy AI Tutor Function
         run: |
-          supabase secrets set GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY_STAGING }}
+          supabase secrets set GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY_DEV }}
           supabase functions deploy ai-tutor --no-verify-jwt
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_STAGING }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_DEV }}
 
   deploy-functions-production:
     name: Deploy Edge Functions Production
     runs-on: ubuntu-latest
     needs: migrate-production
     if: github.ref == 'refs/heads/main'
-    environment: production
     timeout-minutes: 10
 
     steps:
@@ -116,15 +112,15 @@ jobs:
       - name: Setup Supabase CLI
         run: npm install -g supabase
       - name: Link to Production Project
-        run: supabase link --project-ref ${{ env.SUPABASE_PROJECT_REF }}
+        run: supabase link --project-ref ${{ env.SUPABASE_PROJECT_REF_PROD }}
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_PRODUCTION }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_PROD }}
       - name: Deploy AI Tutor Function
         run: |
-          supabase secrets set GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY_PRODUCTION }}
+          supabase secrets set GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY_PROD }}
           supabase functions deploy ai-tutor --no-verify-jwt
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_PRODUCTION }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_PROD }}
 
   test-edge-function:
     name: Test Edge Function

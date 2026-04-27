@@ -18,8 +18,8 @@ class ChildRepositoryImpl implements IChildRepository {
           .eq('parent_id', parentId)
           .order('created_at');
 
-      final children = (response as List)
-          .map((json) => ChildProfile.fromJson(json as Map<String, dynamic>))
+      final children = response
+          .map((json) => ChildProfile.fromJson(Map<String, dynamic>.from(json)))
           .toList();
 
       return (children, null);
@@ -39,7 +39,7 @@ class ChildRepositoryImpl implements IChildRepository {
           .eq('id', childId)
           .single();
 
-      return (ChildProfile.fromJson(response as Map<String, dynamic>), null);
+      return (ChildProfile.fromJson(Map<String, dynamic>.from(response)), null);
     } catch (e) {
       return (null, DatabaseFailure(message: e.toString()));
     }
@@ -75,7 +75,7 @@ class ChildRepositoryImpl implements IChildRepository {
           .select()
           .single();
 
-      return (ChildProfile.fromJson(response as Map<String, dynamic>), null);
+      return (ChildProfile.fromJson(Map<String, dynamic>.from(response)), null);
     } catch (e) {
       return (null, DatabaseFailure(message: e.toString()));
     }
