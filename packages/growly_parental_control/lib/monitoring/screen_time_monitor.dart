@@ -20,7 +20,6 @@ class ScreenTimeData {
 }
 
 class ScreenTimeMonitorNotifier extends AsyncNotifier<ScreenTimeData> {
-  @override
   Future<ScreenTimeData> build() async {
     return _loadScreenTimeData('');
   }

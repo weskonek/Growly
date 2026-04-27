@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:growly_parental_control/parental_rules_engine.dart';
 
 /// Screen for handling parental control permissions setup.
 /// Shown when permissions are not granted.
@@ -12,7 +11,7 @@ class PermissionSetupScreen extends StatelessWidget {
     super.key,
     required this.permissionType,
     required this.onPermissionGranted,
-    this.onSkip,
+    required this.onSkip,
   });
 
   @override

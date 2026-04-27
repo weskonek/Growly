@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SyncService {
@@ -20,23 +22,30 @@ class SyncService {
     return (response as List).cast<Map<String, dynamic>>();
   }
 
-  RealtimeChannel watchTable(
-    String table,
-    String childId,
-    void Function(Map<String, dynamic>) onChange,
-  ) {
-    return _supabase
+  Stream<Map<String, dynamic>> watchTable(String table, String childId) {
+    final controller = StreamController<Map<String, dynamic>>.broadcast();
+
+    _supabase
         .channel('table-changes-$table-$childId')
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: table,
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'child_id',
+            value: childId,
+          ),
           callback: (payload) {
-            final record = payload.newRecord;
-            if (record['child_id'] == childId) {
-              onChange(record);
-            }
+            controller.add(payload.newRecord);
           },
-        );
+        )
+        .subscribe();
+
+    controller.onCancel = () {
+      _supabase.removeChannel(_supabase.channel('table-changes-$table-$childId'));
+    };
+
+    return controller.stream;
   }
 }

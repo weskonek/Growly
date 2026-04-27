@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:hive_flutter/hive_flutter.dart';
-import '../constants/app_constants.dart';
+import '../../constants/app_constants.dart';
 
 class HiveService {
   static Future<void> init() async {
