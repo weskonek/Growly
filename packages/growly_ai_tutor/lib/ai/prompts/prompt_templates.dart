@@ -1,5 +1,5 @@
 import '../models/tutor_context.dart';
-import '../../../growly_core/lib/domain/models/child_profile.dart';
+import 'package:growly_core/growly_core.dart';
 
 class PromptTemplates {
   String buildSystemPrompt(PromptContext context) {
