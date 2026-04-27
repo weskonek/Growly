@@ -20,15 +20,23 @@ class SyncService {
     return (response as List).cast<Map<String, dynamic>>();
   }
 
-  Stream<Map<String, dynamic>> watchTable(String table, String childId) {
+  RealtimeChannel watchTable(
+    String table,
+    String childId,
+    void Function(Map<String, dynamic>) onChange,
+  ) {
     return _supabase
         .channel('table-changes-$table-$childId')
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: table,
-        )
-        .map((change) => change.newRecord as Map<String, dynamic>)
-        .where((record) => record['child_id'] == childId);
+          callback: (payload) {
+            final record = payload.newRecord;
+            if (record['child_id'] == childId) {
+              onChange(record);
+            }
+          },
+        );
   }
 }

@@ -6,7 +6,7 @@ import 'package:growly_parental_control/parental_rules_engine.dart';
 class PermissionSetupScreen extends StatelessWidget {
   final PermissionType permissionType;
   final VoidCallback onPermissionGranted;
-  final VoidCallback onSkip;
+  final VoidCallback? onSkip;
 
   const PermissionSetupScreen({
     super.key,
