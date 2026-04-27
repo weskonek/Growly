@@ -1,4 +1,4 @@
-import { Users, Child, BotMessageSquare, Clock } from 'lucide-react'
+import { Users, UserCircle, BotMessageSquare, Clock } from 'lucide-react'
 import { MetricsCard } from '@/components/dashboard/metrics-card'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'

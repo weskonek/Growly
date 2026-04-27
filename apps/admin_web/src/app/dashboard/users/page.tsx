@@ -12,7 +12,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { formatDistanceToNow } from 'date-fns'
-import { UserActions } from './actions'
+import { UserActions } from './user-actions'
 
 async function getUsers() {
   const { data } = await supabaseAdmin

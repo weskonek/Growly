@@ -1,7 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Child } from 'lucide-react'
+import { UserCircle } from 'lucide-react'
 import {
   Table,
   TableBody,
@@ -49,7 +49,7 @@ export default async function ChildrenPage() {
           </p>
         </div>
         <Badge variant="secondary">
-          <Child className="h-4 w-4 mr-1" />
+          <UserCircle className="h-4 w-4 mr-1" />
           {children.length} children
         </Badge>
       </div>

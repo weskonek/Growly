@@ -3,9 +3,6 @@
 import { revalidatePath } from 'next/cache'
 import { toast } from 'sonner'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { Button } from '@/components/ui/button'
-import { Ban, Trash2 } from 'lucide-react'
-import { useState } from 'react'
 
 export async function suspendUserAction(userId: string) {
   try {
@@ -61,17 +58,4 @@ export async function deleteUserAction(userId: string) {
     toast.error('Failed to delete user')
     console.error(error)
   }
-}
-
-export function UserActions({ userId }: { userId: string }) {
-  return (
-    <div className="flex items-center gap-2 justify-end">
-      <Button variant="outline" size="sm">
-        <Ban className="h-4 w-4" />
-      </Button>
-      <Button variant="destructive" size="sm">
-        <Trash2 className="h-4 w-4" />
-      </Button>
-    </div>
-  )
 }

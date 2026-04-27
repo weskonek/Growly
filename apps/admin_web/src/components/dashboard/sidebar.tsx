@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard,
   Users,
-  Child,
+  UserCircle,
   BotMessageSquare,
   Clock,
   BookOpen,
@@ -19,7 +19,7 @@ import { createClient } from '@/lib/supabase/client'
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Users', href: '/dashboard/users', icon: Users },
-  { name: 'Children', href: '/dashboard/children', icon: Child },
+  { name: 'Children', href: '/dashboard/children', icon: UserCircle },
   { name: 'AI Moderation', href: '/dashboard/ai-moderation', icon: BotMessageSquare },
   { name: 'Screen Time', href: '/dashboard/screen-time', icon: Clock },
   { name: 'Learning', href: '/dashboard/learning', icon: BookOpen },

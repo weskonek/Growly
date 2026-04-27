@@ -1,74 +1,181 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { corsHeaders } from 'https://esm.sh/@supabase/supabase-js@2'
-import { GeminiClient } from './gemini.ts'
-import { buildSystemPrompt, buildUserPrompt, validateContentSafety } from './prompts.ts'
-import { SafetyFilter } from './safety.ts'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
 
 const GEMINI_MODEL = 'gemini-1.5-flash'
 
+// ==================== SAFETY FILTER ====================
+const BLOCKED_PATTERNS = [
+  /violence|pertarungan|pertempuran|membunuh|combat/i,
+  /adult|konten dewasa|18\+|seks/i,
+  /gambling|judol|kasino|lotre/i,
+  /drug|narkoba|heroin|cocaine|weed|ganja/i,
+  /suicide|bunuh diri|melukai diri|self.?harm/i,
+  /hate|kelompok|rasis|diskriminasi/i,
+  /weapon|bom|senjata|pistol|pedang/i,
+  /phishing|scam|penipuan/i,
+]
+
+const INJECTION_PATTERNS = [
+  /ignore previous instructions/i,
+  /ignore all previous/i,
+  /you are now/i,
+  /disregard previous/i,
+  /system prompt/i,
+]
+
+class SafetyFilter {
+  isSafe(input: string): boolean {
+    for (const pattern of BLOCKED_PATTERNS) {
+      if (pattern.test(input)) return false
+    }
+    for (const pattern of INJECTION_PATTERNS) {
+      if (pattern.test(input)) return false
+    }
+    if (input.length > 5000) return false
+    return true
+  }
+
+  isOutputSafe(output: string): boolean {
+    for (const pattern of BLOCKED_PATTERNS) {
+      if (pattern.test(output)) return false
+    }
+    if (output.length > 10000) return false
+    return true
+  }
+}
+
+// ==================== PROMPT TEMPLATES ====================
+function getAgeGroup(age: number): number {
+  if (age <= 5) return 0
+  if (age <= 9) return 1
+  if (age <= 12) return 2
+  return 3
+}
+
+function buildSystemPrompt(age: number, mode: string): string {
+  const ageGroup = getAgeGroup(age)
+  let agePrompt = ''
+
+  switch (ageGroup) {
+    case 0:
+      agePrompt = 'Kalimat sangat pendek (2-4 kata). Pertanyaan ya/tidak. Pujian berlebihan: "LUAR BIASAAAA!"'
+      break
+    case 1:
+      agePrompt = 'Kalimat pendek (5-8 kata). Contoh visual. "Kerja bagus!", "Pintar!"'
+      break
+    case 2:
+      agePrompt = 'Penjelasan detail tapi sederhana. Konteks "mengapa" dan "bagaimana".'
+      break
+    case 3:
+      agePrompt = 'Bahasa formal tapi ramah. Penjelasan mendalam. Partner belajar.'
+      break
+  }
+
+  let modePrompt = ''
+  switch (mode) {
+    case 'story':
+      modePrompt = 'MODE CERITA: Ceritakan cerita interaktif, akhiri dengan pertanyaan comprehension.'
+      break
+    case 'math':
+      modePrompt = 'MODE MATEMATIKA: Ajarkan KONSEP, BUKAN jawaban. Berikan hint, bukan solusi.'
+      break
+    case 'homework':
+      modePrompt = 'MODE TUGAS: JANGAN langsung jawaban. Ajukan pertanyaan Socratic.'
+      break
+    default:
+      modePrompt = 'MODE UMUM: Ramah, suportif, positif.'
+  }
+
+  return `Kamu AI tutor "Growly" 🤖 untuk anak Indonesia.
+
+PERSONALITAS: Ramah, suportif, penuh semangat, banyak emoji, pujian untuk usaha.
+
+${agePrompt}
+
+${modePrompt}
+
+KEAMANAN:
+- JANGAN topik dewasa, kekerasan, politik, agama
+- JANGAN minta info pribadi
+- JANGAN bandingkan dengan anak lain
+- Topik tidak pantas → "Growly lebih suka membantu belajar 📚"
+`
+}
+
+function buildUserPrompt(question: string, childName: string, age: number): string {
+  return `${childName} (${age} tahun) bertanya:\n"${question}"\n\nBerikan respons sesuai usia, bahasa Indonesia sederhana, ramah, dengan emoji.`
+}
+
+// ==================== GEMINI CLIENT ====================
+async function callGemini(apiKey: string, systemPrompt: string, userPrompt: string) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ role: 'user', parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }],
+      generationConfig: { temperature: 0.8, maxOutputTokens: 1024 }
+    })
+  })
+
+  if (!response.ok) {
+    throw new Error(`Gemini API error: ${response.status}`)
+  }
+
+  const data = await response.json()
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+}
+
+// ==================== MAIN HANDLER ====================
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    // Authorization check
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({ error: 'Missing authorization' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // Create Supabase client with service role (for logging)
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    // Parse request body
-    const { childId, question, mode = 'general', sessionId } = await req.json()
+    const { childId, question, mode = 'general' } = await req.json()
 
     if (!childId || !question) {
-      return new Response(
-        JSON.stringify({ error: 'Missing childId or question' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({ error: 'Missing childId or question' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // Validate input content safety
+    // Safety check
     const safetyFilter = new SafetyFilter()
     if (!safetyFilter.isSafe(question)) {
-      // Log flagged interaction
-      await logAiSession(supabase, childId, question, '', mode, true, 'Unsafe input detected')
-      return new Response(
-        JSON.stringify({
-          content: 'Hmm, itu topik yang menarik! Tapi Growly lebih suka menjawab pertanyaan tentang belajar. Coba tanyakan sesuatu tentang pelajaran ya! 📚',
-          type: 'redirect',
-          metadata: { flagged: true }
-        }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return new Response(JSON.stringify({
+        content: 'Hmm, itu topik menarik! Tapi Growly lebih suka membantu belajar 📚 Coba tanyakan tentang pelajaran ya!',
+        type: 'redirect',
+        metadata: { flagged: true }
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
     // Get child profile
-    const { data: child, error: childError } = await supabase
+    const { data: child, error } = await supabase
       .from('child_profiles')
-      .select('id, name, birth_date, age_group, settings')
+      .select('name, birth_date, age_group')
       .eq('id', childId)
       .single()
 
-    if (childError || !child) {
-      return new Response(
-        JSON.stringify({ error: 'Child profile not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+    if (error || !child) {
+      return new Response(JSON.stringify({ error: 'Child not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // Calculate age from birth_date
     const birthDate = new Date(child.birth_date)
     const age = Math.floor((Date.now() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000))
 
@@ -76,130 +183,35 @@ serve(async (req) => {
     const systemPrompt = buildSystemPrompt(age, mode)
     const userPrompt = buildUserPrompt(question, child.name, age)
 
-    // Call Gemini API
-    const gemini = new GeminiClient(Deno.env.get('GEMINI_API_KEY')!)
+    // Call Gemini
     const startTime = Date.now()
-
-    const response = await gemini.generateContent({
-      contents: [{
-        role: 'user',
-        parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }]
-      }],
-      generationConfig: {
-        temperature: 0.8,
-        maxOutputTokens: 1024,
-      }
-    })
-
+    const apiKey = Deno.env.get('GEMINI_API_KEY')!
+    let aiContent = await callGemini(apiKey, systemPrompt, userPrompt)
     const responseTime = Date.now() - startTime
-    const aiContent = response.candidates?.[0]?.content?.parts?.[0]?.text || ''
-    const usage = response.usageMetadata || {}
 
-    // Validate output content safety
+    // Safety check output
     if (!safetyFilter.isOutputSafe(aiContent)) {
-      await logAiSession(supabase, childId, question, aiContent, mode, true, 'Unsafe output detected')
-      return new Response(
-        JSON.stringify({
-          content: 'Maaf, Growly sedang confused nih. Coba tanyakan dengan cara berbeda ya! 🔄',
-          type: 'error',
-          metadata: { flagged: true }
-        }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      aiContent = 'Maaf, Growly sedang confused nih. Coba tanyakan dengan cara berbeda ya! 🔄'
     }
 
-    // Log successful interaction
-    await logAiSession(
-      supabase,
-      childId,
-      question,
-      aiContent,
+    // Log session
+    await supabase.from('ai_tutor_sessions').insert({
+      child_id: childId,
       mode,
-      false,
-      null,
-      responseTime,
-      usage.totalTokenCount || 0,
-      sessionId
-    )
+      prompt: question,
+      response: aiContent,
+      response_time_ms: responseTime,
+      flagged: false
+    })
 
-    // Return response
-    return new Response(
-      JSON.stringify({
-        content: aiContent,
-        type: mode,
-        metadata: {
-          childAge: age,
-          childAgeGroup: child.age_group,
-          model: GEMINI_MODEL,
-          responseTimeMs: responseTime,
-          tokensUsed: usage.totalTokenCount || 0,
-          timestamp: new Date().toISOString()
-        }
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return new Response(JSON.stringify({
+      content: aiContent,
+      type: mode,
+      metadata: { childAge: age, model: GEMINI_MODEL, timestamp: new Date().toISOString() }
+    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 
   } catch (error) {
     console.error('AI Tutor error:', error)
-    return new Response(
-      JSON.stringify({ error: 'Internal server error', message: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   }
 })
-
-async function logAiSession(
-  supabase: any,
-  childId: string,
-  prompt: string,
-  response: string,
-  mode: string,
-  flagged: boolean,
-  flagReason: string | null,
-  responseTimeMs?: number,
-  tokensUsed?: number,
-  sessionId?: string
-) {
-  try {
-    // Create session if no sessionId provided
-    let actualSessionId = sessionId
-
-    if (!actualSessionId) {
-      const { data: newSession } = await supabase
-        .from('ai_tutor_sessions')
-        .insert({
-          child_id: childId,
-          mode,
-          prompt,
-          response,
-          response_time_ms: responseTimeMs,
-          tokens_used: tokensUsed,
-          flagged,
-          flag_reason: flagReason
-        })
-        .select('id')
-        .single()
-
-      actualSessionId = newSession?.id
-    } else {
-      // Insert message to existing session
-      await supabase
-        .from('ai_tutor_messages')
-        .insert({
-          session_id: sessionId,
-          role: 'user',
-          content: prompt
-        })
-
-      await supabase
-        .from('ai_tutor_messages')
-        .insert({
-          session_id: sessionId,
-          role: 'assistant',
-          content: response
-        })
-    }
-  } catch (error) {
-    console.error('Failed to log AI session:', error)
-  }
-}

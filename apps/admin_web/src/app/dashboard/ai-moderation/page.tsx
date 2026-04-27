@@ -1,9 +1,8 @@
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { BotMessageSquare, AlertTriangle, Check, Trash2 } from 'lucide-react'
-import { AiModerationActions } from './actions'
+import { BotMessageSquare, AlertTriangle, Check } from 'lucide-react'
+import { AiModerationActions } from './actions-client'
 
 async function getFlaggedSessions() {
   const { data } = await supabaseAdmin
@@ -130,7 +129,11 @@ export default async function AIModerationPage() {
                       <span>{session.response_time_ms}ms response</span>
                     )}
                   </div>
-                  <AiModerationActions sessionId={session.id} />
+                  <AiModerationActions
+                    sessionId={session.id}
+                    parentId={session.child_profiles?.parent_profiles?.id}
+                    childId={session.child_profiles?.id}
+                  />
                 </div>
               </CardContent>
             </Card>
