@@ -23,8 +23,15 @@ class RewardsPage extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Streak Belajar', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-                      Text('5 hari berturut-turut!', style: TextStyle(color: Colors.orange.shade700, fontWeight: FontWeight.w600)),
+                      Text('Streak Belajar',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w700)),
+                      Text('5 hari berturut-turut!',
+                          style: TextStyle(
+                              color: Colors.orange.shade700,
+                              fontWeight: FontWeight.w600)),
                     ],
                   ),
                 ],
@@ -32,7 +39,11 @@ class RewardsPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          Text('Badge Kamu', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+          Text('Badge Kamu',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 12),
           GridView.count(
             crossAxisCount: 3,
@@ -58,7 +69,8 @@ class RewardsPage extends StatelessWidget {
 class _BadgeCard extends StatelessWidget {
   final String emoji, label;
   final bool unlocked;
-  const _BadgeCard({required this.emoji, required this.label, required this.unlocked});
+  const _BadgeCard(
+      {required this.emoji, required this.label, required this.unlocked});
 
   @override
   Widget build(BuildContext context) {
@@ -66,7 +78,7 @@ class _BadgeCard extends StatelessWidget {
       opacity: unlocked ? 1.0 : 0.4,
       child: Container(
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceVariant,
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
@@ -74,7 +86,10 @@ class _BadgeCard extends StatelessWidget {
           children: [
             Text(emoji, style: const TextStyle(fontSize: 36)),
             const SizedBox(height: 4),
-            Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
+            Text(label,
+                style:
+                    const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                textAlign: TextAlign.center),
           ],
         ),
       ),
