@@ -12,19 +12,19 @@ class SyncManager {
     _isSyncing = true;
 
     try {
-      final queue = HiveService.getOfflineQueue();
-      for (int i = 0; i < queue.length; i++) {
-        final item = queue[i];
-        final operation = item['operation'] as String;
-        final data = item['data'] as Map<String, dynamic>;
-
-        try {
-          await _processOperation(operation, data);
-          await HiveService.removeFromOfflineQueue(i);
-        } catch (e) {
-          // Keep in queue for retry
-        }
-      }
+      // TODO: Implement offline sync with HiveService
+      // final queue = HiveService.getOfflineQueue();
+      // for (int i = 0; i < queue.length; i++) {
+      //   final item = queue[i];
+      //   final operation = item['operation'] as String;
+      //   final data = item['data'] as Map<String, dynamic>;
+      //   try {
+      //     await _processOperation(operation, data);
+      //     await HiveService.removeFromOfflineQueue(i);
+      //   } catch (e) {
+      //     // Keep in queue for retry
+      //   }
+      // }
     } finally {
       _isSyncing = false;
     }
@@ -54,7 +54,7 @@ class SyncManager {
       await _processOperation(operation, {'table': table, 'record': record});
     } catch (e) {
       // Offline - add to queue
-      await HiveService.addToOfflineQueue(operation, {'table': table, 'record': record});
+      // TODO: Implement offline queue with HiveService
     }
   }
 
