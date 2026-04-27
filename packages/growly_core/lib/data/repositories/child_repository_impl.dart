@@ -57,7 +57,7 @@ class ChildRepositoryImpl implements IChildRepository {
           .select()
           .single();
 
-      return (ChildProfile.fromJson(response as Map<String, dynamic>), null);
+      return (ChildProfile.fromJson(Map<String, dynamic>.from(response)), null);
     } catch (e) {
       return (null, DatabaseFailure(message: e.toString()));
     }
