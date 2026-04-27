@@ -1,0 +1,180 @@
+# ============================================
+# Flutter Mobile Apps CI/CD
+# ============================================
+
+name: Mobile Apps
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - '.github/workflows/mobile.yml'
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+
+env:
+  FLUTTER_VERSION: '3.22.0'
+  DART_VERSION: '3.3.0'
+
+jobs:
+  # ============================================
+  # ANALYZE & FORMAT
+  # ============================================
+  analyze:
+    name: Analyze Code
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+
+      - name: Install Melos
+        run: flutter pub global activate melos
+
+      - name: Bootstrap
+        run: melos bootstrap
+
+      - name: Analyze Parent App
+        run: melos analyze --scope=parent_app
+
+      - name: Analyze Child App
+        run: melos analyze --scope=child_app
+
+  # ============================================
+  # TEST
+  # ============================================
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+
+      - name: Install Melos
+        run: flutter pub global activate melos
+
+      - name: Bootstrap
+        run: melos bootstrap
+
+      - name: Run Tests
+        run: melos test
+
+  # ============================================
+  # BUILD ANDROID (Parent App)
+  # ============================================
+  build-android-parent:
+    name: Build Android (Parent App)
+    runs-on: ubuntu-latest
+    needs: analyze
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+
+      - name: Setup Android SDK
+        run: |
+          flutter config --android-sdk /opt/android-sdk
+          flutter doctor --android-licenses || true
+
+      - name: Install Dependencies
+        run: |
+          cd apps/parent_app
+          flutter pub get
+
+      - name: Build Debug APK
+        run: |
+          cd apps/parent_app
+          flutter build apk --debug --output ../builds/parent-app-debug.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: parent-app-debug-apk
+          path: builds/parent-app-debug.apk
+
+  # ============================================
+  # BUILD ANDROID (Child App)
+  # ============================================
+  build-android-child:
+    name: Build Android (Child App)
+    runs-on: ubuntu-latest
+    needs: analyze
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+
+      - name: Setup Android SDK
+        run: |
+          flutter config --android-sdk /opt/android-sdk
+          flutter doctor --android-licenses || true
+
+      - name: Install Dependencies
+        run: |
+          cd apps/child_app
+          flutter pub get
+
+      - name: Build Debug APK
+        run: |
+          cd apps/child_app
+          flutter build apk --debug --output ../builds/child-app-debug.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: child-app-debug-apk
+          path: builds/child-app-debug.apk
+
+  # ============================================
+  # NOTIFICATION
+  # ============================================
+  notify:
+    name: Notify Status
+    runs-on: ubuntu-latest
+    needs: [build-android-parent, build-android-child]
+    if: always()
+    steps:
+      - name: Status
+        run: |
+          if [ "${{ needs.build-android-parent.result }}" == "success" ] && [ "${{ needs.build-android-child.result }}" == "success" ]; then
+            echo "All builds successful!"
+          else
+            echo "Some builds failed. Check logs."
+            exit 1
+          fi
