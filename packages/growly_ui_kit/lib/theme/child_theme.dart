@@ -54,7 +54,7 @@ class ChildTheme {
         elevation: 0,
         toolbarHeight: 72,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 4,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(borderRadiusLarge),
@@ -102,7 +102,7 @@ class ChildTheme {
       fontFamily: 'Nunito',
       textTheme: light.textTheme,
       appBarTheme: light.appBarTheme,
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 4,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(borderRadiusLarge),

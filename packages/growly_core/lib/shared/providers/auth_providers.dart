@@ -59,5 +59,5 @@ final isAuthenticatedProvider = Provider<bool>((ref) {
 /// Get current user ID
 final currentUserIdProvider = Provider<String?>((ref) {
   final authState = ref.watch(authStateChangesProvider);
-  return authState.valueOrNull?.session?.user?.id;
+  return authState.valueOrNull?.session?.user.id;
 });

@@ -1,6 +1,5 @@
+import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:hive_flutter/hive_flutter.dart';
-import 'local/hive_service.dart';
 
 class SyncManager {
   final SupabaseClient _supabase;
@@ -60,14 +59,25 @@ class SyncManager {
   }
 
   Stream<Map<String, dynamic>> watchTable(String table, String childId) {
-    return _supabase
+    final controller = StreamController<Map<String, dynamic>>.broadcast();
+
+    _supabase
         .channel('sync-$table-$childId')
         .onPostgresChanges(
           schema: 'public',
           table: table,
-          filter: Filter.eq('child_id', childId),
           event: PostgresChangeEvent.all,
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'child_id',
+            value: childId,
+          ),
+          callback: (payload) {
+            controller.add(payload.newRecord);
+          },
         )
-        .map((change) => change.newRecord as Map<String, dynamic>);
+        .subscribe();
+
+    return controller.stream;
   }
 }

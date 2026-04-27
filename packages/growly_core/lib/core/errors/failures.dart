@@ -4,6 +4,10 @@ sealed class Failure {
 
   const Failure({required this.message, this.code});
 
+  factory Failure.database(String message) => DatabaseFailure(message: message);
+  factory Failure.server(String message, {int? code}) => ServerFailure(message: message, code: code);
+  factory Failure.network(String message) => NetworkFailure(message: message);
+
   String get userFriendlyMessage {
     if (this is NetworkFailure) {
       return 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';

@@ -23,7 +23,7 @@ class AppRestrictionRepositoryImpl implements IAppRestrictionRepository {
 
       return (restrictions, null);
     } catch (e) {
-      return (null, Failure.database(message: e.toString()));
+      return (null, DatabaseFailure(message: e.toString()));
     }
   }
 
@@ -40,7 +40,7 @@ class AppRestrictionRepositoryImpl implements IAppRestrictionRepository {
 
       return (AppRestriction.fromJson(response as Map<String, dynamic>), null);
     } catch (e) {
-      return (null, Failure.database(message: e.toString()));
+      return (null, DatabaseFailure(message: e.toString()));
     }
   }
 
@@ -50,7 +50,7 @@ class AppRestrictionRepositoryImpl implements IAppRestrictionRepository {
       await _client.from('app_restrictions').delete().eq('id', restrictionId);
       return (true, null);
     } catch (e) {
-      return (false, Failure.database(message: e.toString()));
+      return (false, DatabaseFailure(message: e.toString()));
     }
   }
 
@@ -69,7 +69,7 @@ class AppRestrictionRepositoryImpl implements IAppRestrictionRepository {
 
       return (schedules, null);
     } catch (e) {
-      return (null, Failure.database(message: e.toString()));
+      return (null, DatabaseFailure(message: e.toString()));
     }
   }
 
@@ -86,7 +86,7 @@ class AppRestrictionRepositoryImpl implements IAppRestrictionRepository {
 
       return (Schedule.fromJson(response as Map<String, dynamic>), null);
     } catch (e) {
-      return (null, Failure.database(message: e.toString()));
+      return (null, DatabaseFailure(message: e.toString()));
     }
   }
 
@@ -96,7 +96,7 @@ class AppRestrictionRepositoryImpl implements IAppRestrictionRepository {
       await _client.from('schedules').delete().eq('id', scheduleId);
       return (true, null);
     } catch (e) {
-      return (false, Failure.database(message: e.toString()));
+      return (false, DatabaseFailure(message: e.toString()));
     }
   }
 }
