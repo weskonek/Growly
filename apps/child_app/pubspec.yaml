@@ -14,13 +14,13 @@ dependencies:
 
   # Monorepo packages
   growly_core:
-    path: ../../packages/core
+    path: ../../packages/growly_core
   growly_ui_kit:
-    path: ../../packages/ui_kit
+    path: ../../packages/growly_ui_kit
   growly_ai_tutor:
-    path: ../../packages/ai_tutor
+    path: ../../packages/growly_ai_tutor
   growly_parental_control:
-    path: ../../packages/parental_control
+    path: ../../packages/growly_parental_control
 
   # State management
   flutter_riverpod: ^2.5.1

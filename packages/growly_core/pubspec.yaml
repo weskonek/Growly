@@ -25,7 +25,7 @@ dependencies:
   sqlite3_flutter_libs: ^0.5.0
 
   # Cache
-  hive_flutter: ^1.5.0
+  hive_flutter: ^1.1.0
 
   # Serialization
   freezed_annotation: ^2.4.1
