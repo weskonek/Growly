@@ -1,0 +1,40 @@
+name: growly_ai_tutor
+description: AI Tutor package for Growly - AI service layer, prompts, and tutoring engine.
+version: 1.0.0+1
+
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+  flutter: '>=3.22.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Core dependencies
+  growly_core:
+    path: ../growly_core
+
+  # State management
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+
+  # Serialization
+  freezed_annotation: ^2.4.1
+  json_annotation: ^4.9.0
+
+  # TTS
+  flutter_tts: ^4.2.0
+
+  # HTTP client for AI API calls
+  dio: ^5.6.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  build_runner: ^2.4.11
+  freezed: ^2.5.2
+  json_serializable: ^6.8.0
+  riverpod_generator: ^2.4.0
