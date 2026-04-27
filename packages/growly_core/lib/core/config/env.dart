@@ -1,12 +1,12 @@
 class Env {
   Env._();
 
-  // Supabase - replace with actual values
-  static const String supabaseUrl = 'YOUR_SUPABASE_URL';
-  static const String supabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY';
+  // Supabase
+  static const String supabaseUrl = 'https://scfgcegyvgkxntqmmerl.supabase.co';
+  static const String supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjZmdjZWd5dmdreG50cW1tZXJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyOTUwMDksImV4cCI6MjA5Mjg3MTAwOX0.BP7E05P1ARVSdLz_UH0BSlL9k309bOD_MipXFHbTQPY';
 
   // AI Gateway (Edge Function URL)
-  static const String aiGatewayUrl = 'YOUR_AI_GATEWAY_URL';
+  static const String aiGatewayUrl = 'https://scfgcegyvgkxntqmmerl.supabase.co/functions/v1/ai-tutor';
 
   // Environment
   static const bool isProduction = bool.fromEnvironment('IS_PRODUCTION', defaultValue: false);
