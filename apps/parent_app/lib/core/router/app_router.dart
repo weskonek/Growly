@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
@@ -12,10 +11,8 @@ import '../../features/parental_control/presentation/pages/parental_control_page
 import '../../features/settings/presentation/pages/settings_page.dart';
 import '../providers/auth_provider.dart';
 
-part 'app_router.g.dart';
-
-@riverpod
-GoRouter appRouter(AppRouterRef ref) {
+/// Router provider with auth redirect logic
+final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
 
   return GoRouter(
@@ -75,7 +72,7 @@ GoRouter appRouter(AppRouterRef ref) {
       ),
     ],
   );
-}
+});
 
 class MainShell extends StatelessWidget {
   final Widget child;
