@@ -81,16 +81,27 @@ class MainShell extends StatelessWidget {
   final Widget child;
   const MainShell({super.key, required this.child});
 
+  int _locationToIndex(String location) {
+    if (location.startsWith('/dashboard')) return 0;
+    if (location.startsWith('/children')) return 1;
+    if (location.startsWith('/parental-control')) return 2;
+    if (location.startsWith('/settings')) return 3;
+    return 0;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final location = GoRouterState.of(context).matchedLocation;
+
     return Scaffold(
       body: child,
       bottomNavigationBar: NavigationBar(
+        selectedIndex: _locationToIndex(location),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.dashboard), label: 'Dashboard'),
-          NavigationDestination(icon: Icon(Icons.child_care), label: 'Anak'),
-          NavigationDestination(icon: Icon(Icons.security), label: 'Kontrol'),
-          NavigationDestination(icon: Icon(Icons.settings), label: 'Pengaturan'),
+          NavigationDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: 'Dashboard'),
+          NavigationDestination(icon: Icon(Icons.child_care_outlined), selectedIcon: Icon(Icons.child_care), label: 'Anak'),
+          NavigationDestination(icon: Icon(Icons.security_outlined), selectedIcon: Icon(Icons.security), label: 'Kontrol'),
+          NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: 'Pengaturan'),
         ],
         onDestinationSelected: (index) {
           switch (index) {

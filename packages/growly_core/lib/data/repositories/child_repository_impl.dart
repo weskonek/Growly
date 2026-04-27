@@ -1,12 +1,13 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../core/database/remote/supabase_service.dart';
 import '../../core/errors/failures.dart';
 import '../../domain/models/child_profile.dart';
 import '../../domain/repositories/child_repository.dart';
 
 class ChildRepositoryImpl implements IChildRepository {
-  SupabaseClient get _client => SupabaseService.client;
+  final SupabaseClient _client;
+
+  ChildRepositoryImpl(this._client);
 
   @override
   Future<(List<ChildProfile>?, Failure?)> getChildren(String parentId) async {
@@ -66,7 +67,6 @@ class ChildRepositoryImpl implements IChildRepository {
   Future<(ChildProfile?, Failure?)> updateChild(ChildProfile child) async {
     try {
       final json = child.toJson();
-      json['updated_at'] = DateTime.now().toIso8601String();
 
       final response = await _client
           .from('child_profiles')
@@ -94,14 +94,12 @@ class ChildRepositoryImpl implements IChildRepository {
   @override
   Future<(bool, Failure?)> verifyPin(String childId, String pin) async {
     try {
-      final response = await _client
-          .from('child_profiles')
-          .select('pin')
-          .eq('id', childId)
-          .eq('pin', pin)
-          .maybeSingle();
+      final response = await _client.rpc('verify_child_pin', params: {
+        'p_child_id': childId,
+        'p_pin': pin,
+      }).single();
 
-      return (response != null, null);
+      return (response['success'] as bool, null);
     } catch (e) {
       return (false, Failure.database(message: e.toString()));
     }

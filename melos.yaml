@@ -38,6 +38,11 @@ scripts:
     run: melos exec -- flutter clean
     description: Clean all packages
 
+  supabase:deploy:
+    run: |
+      cd backend/supabase && supabase functions deploy
+    description: Deploy all Supabase Edge Functions
+
   build:android:parent:
     exec: flutter build apk --release
     package: apps/parent_app

@@ -1,11 +1,19 @@
-name: growly
-description: Growly monorepo
+name: growly_workspace
+description: Growly monorepo workspace
 version: 1.0.0
 
 environment:
-  sdk: ^3.11.0
+  sdk: ^3.11.5
 
 publish_to: none
+
+workspace:
+  - apps/parent_app
+  - apps/child_app
+  - packages/growly_core
+  - packages/growly_ui_kit
+  - packages/growly_ai_tutor
+  - packages/growly_parental_control
 
 dev_dependencies:
   melos: ^7.5.0
