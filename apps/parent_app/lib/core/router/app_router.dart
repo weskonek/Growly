@@ -1,0 +1,106 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+
+import '../../features/auth/presentation/pages/login_page.dart';
+import '../../features/auth/presentation/pages/register_page.dart';
+import '../../features/dashboard/presentation/pages/dashboard_page.dart';
+import '../../features/children/presentation/pages/children_list_page.dart';
+import '../../features/children/presentation/pages/add_child_page.dart';
+import '../../features/parental_control/presentation/pages/parental_control_page.dart';
+import '../../features/settings/presentation/pages/settings_page.dart';
+import '../providers/auth_provider.dart';
+
+part 'app_router.g.dart';
+
+@riverpod
+GoRouter appRouter(AppRouterRef ref) {
+  final authState = ref.watch(authStateProvider);
+
+  return GoRouter(
+    initialLocation: '/dashboard',
+    redirect: (context, state) {
+      final isLoggedIn = authState.valueOrNull != null;
+      final isAuthRoute = state.matchedLocation.startsWith('/auth');
+
+      if (!isLoggedIn && !isAuthRoute) return '/auth/login';
+      if (isLoggedIn && isAuthRoute) return '/dashboard';
+      return null;
+    },
+    routes: [
+      // Auth routes
+      GoRoute(
+        path: '/auth/login',
+        name: 'login',
+        builder: (context, state) => const LoginPage(),
+      ),
+      GoRoute(
+        path: '/auth/register',
+        name: 'register',
+        builder: (context, state) => const RegisterPage(),
+      ),
+      // Main shell with bottom navigation
+      ShellRoute(
+        builder: (context, state, child) => MainShell(child: child),
+        routes: [
+          GoRoute(
+            path: '/dashboard',
+            name: 'dashboard',
+            builder: (context, state) => const DashboardPage(),
+          ),
+          GoRoute(
+            path: '/children',
+            name: 'children',
+            builder: (context, state) => const ChildrenListPage(),
+            routes: [
+              GoRoute(
+                path: 'add',
+                name: 'add-child',
+                builder: (context, state) => const AddChildPage(),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: '/parental-control',
+            name: 'parental-control',
+            builder: (context, state) => const ParentalControlPage(),
+          ),
+          GoRoute(
+            path: '/settings',
+            name: 'settings',
+            builder: (context, state) => const SettingsPage(),
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
+class MainShell extends StatelessWidget {
+  final Widget child;
+  const MainShell({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: child,
+      bottomNavigationBar: NavigationBar(
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.dashboard), label: 'Dashboard'),
+          NavigationDestination(icon: Icon(Icons.child_care), label: 'Anak'),
+          NavigationDestination(icon: Icon(Icons.security), label: 'Kontrol'),
+          NavigationDestination(icon: Icon(Icons.settings), label: 'Pengaturan'),
+        ],
+        onDestinationSelected: (index) {
+          switch (index) {
+            case 0: GoRouter.of(context).go('/dashboard'); break;
+            case 1: GoRouter.of(context).go('/children'); break;
+            case 2: GoRouter.of(context).go('/parental-control'); break;
+            case 3: GoRouter.of(context).go('/settings'); break;
+          }
+        },
+      ),
+    );
+  }
+}
