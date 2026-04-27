@@ -1,22 +1,14 @@
 import 'package:flutter_tts/flutter_tts.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
-import '../../../growly_core/lib/domain/models/child_profile.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:growly_core/growly_core.dart';
 
-part 'tts_service.g.dart';
-
-@riverpod
-class TtsService extends _$TtsService {
+class TtsService {
   late FlutterTts _flutterTts;
   bool _isInitialized = false;
 
-  @override
-  TtsService build() {
+  TtsService() {
     _flutterTts = FlutterTts();
     _initTts();
-    ref.onDispose(() {
-      _flutterTts.stop();
-    });
-    return this;
   }
 
   Future<void> _initTts() async {
@@ -66,5 +58,15 @@ class TtsService extends _$TtsService {
     await _flutterTts.pause();
   }
 
-  bool get isSpeaking => _flutterTts.getisSpeaking as bool? ?? false;
+  bool get isSpeaking => _flutterTts.getIsSpeaking() as bool? ?? false;
+
+  void dispose() {
+    _flutterTts.stop();
+  }
 }
+
+final ttsServiceProvider = Provider<TtsService>((ref) {
+  final service = TtsService();
+  ref.onDispose(() => service.dispose());
+  return service;
+});

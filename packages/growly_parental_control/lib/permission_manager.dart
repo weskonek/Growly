@@ -1,64 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:growly_parental_control/native/android_parental_control.dart';
-import 'package:growly_parental_control/permission_setup_screen.dart';
 
-/// Provider for checking and managing parental control permissions.
-final permissionManagerProvider = Provider<PermissionManager>((ref) {
-  return PermissionManager(ref.read(androidParentalControlProvider));
-});
-
-class PermissionManager {
-  final AndroidParentalControl _androidControl;
-
-  PermissionManager(this._androidControl);
-
-  /// Check if all required permissions are granted.
-  Future<PermissionStatus> checkPermissions() async {
-    final usageStats = await _androidControl.checkUsageStatsPermission();
-    final deviceAdmin = await _androidControl.isDeviceAdmin();
-
-    if (usageStats && deviceAdmin) {
-      return PermissionStatus.granted;
-    }
-
-    // Check which permissions are missing
-    final missing = <PermissionType>[];
-    if (!usageStats) missing.add(PermissionType.usageStats);
-    if (!deviceAdmin) missing.add(PermissionType.deviceAdmin);
-
-    return PermissionStatus.partial(missing);
-  }
-
-  /// Request a specific permission.
-  Future<void> requestPermission(PermissionType type) async {
-    switch (type) {
-      case PermissionType.usageStats:
-        await _androidControl.requestUsageStatsPermission();
-        break;
-      case PermissionType.deviceAdmin:
-        await _androidControl.requestDeviceAdmin();
-        break;
-      case PermissionType.accessibility:
-        await _androidControl.openAccessibilitySettings();
-        break;
-    }
-  }
-
-  /// Open device settings for a specific permission.
-  Future<void> openSettings(PermissionType type) async {
-    switch (type) {
-      case PermissionType.usageStats:
-        await _androidControl.openUsageAccessSettings();
-        break;
-      case PermissionType.deviceAdmin:
-        await _androidControl.requestDeviceAdmin();
-        break;
-      case PermissionType.accessibility:
-        await _androidControl.openAccessibilitySettings();
-        break;
-    }
-  }
+enum PermissionType {
+  usageStats,
+  deviceAdmin,
+  accessibility,
 }
 
 sealed class PermissionStatus {
@@ -79,7 +26,59 @@ class PartialPermissions extends PermissionStatus {
   const PartialPermissions(this.missingPermissions);
 }
 
-/// Widget that handles permission flow for child app.
+class PermissionManager {
+  final AndroidParentalControl _androidControl;
+
+  PermissionManager(this._androidControl);
+
+  Future<PermissionStatus> checkPermissions() async {
+    final usageStats = await _androidControl.checkUsageStatsPermission();
+    final deviceAdmin = await _androidControl.isDeviceAdmin();
+
+    if (usageStats && deviceAdmin) {
+      return const AllPermissionsGranted();
+    }
+
+    final missing = <PermissionType>[];
+    if (!usageStats) missing.add(PermissionType.usageStats);
+    if (!deviceAdmin) missing.add(PermissionType.deviceAdmin);
+
+    return PartialPermissions(missing);
+  }
+
+  Future<void> requestPermission(PermissionType type) async {
+    switch (type) {
+      case PermissionType.usageStats:
+        await _androidControl.requestUsageStatsPermission();
+        break;
+      case PermissionType.deviceAdmin:
+        await _androidControl.requestDeviceAdmin();
+        break;
+      case PermissionType.accessibility:
+        await _androidControl.openAccessibilitySettings();
+        break;
+    }
+  }
+
+  Future<void> openSettings(PermissionType type) async {
+    switch (type) {
+      case PermissionType.usageStats:
+        await _androidControl.openUsageAccessSettings();
+        break;
+      case PermissionType.deviceAdmin:
+        await _androidControl.requestDeviceAdmin();
+        break;
+      case PermissionType.accessibility:
+        await _androidControl.openAccessibilitySettings();
+        break;
+    }
+  }
+}
+
+final permissionManagerProvider = Provider<PermissionManager>((ref) {
+  return PermissionManager(ref.read(androidParentalControlProvider));
+});
+
 class PermissionGate extends ConsumerStatefulWidget {
   final Widget child;
   final Widget Function(BuildContext, PermissionType, VoidCallback) onRequestPermission;
@@ -125,27 +124,22 @@ class _PermissionGateState extends ConsumerState<PermissionGate> {
       );
     }
 
-    return switch (_status) {
-      AllPermissionsGranted() => widget.child,
-      PartialPermissions(:final missingPermissions) => _buildPermissionRequest(
-          context,
-          missingPermissions.first,
-        ),
-      null => widget.child,
-    };
+    final status = _status;
+    if (status is AllPermissionsGranted) {
+      return widget.child;
+    } else if (status is PartialPermissions) {
+      return _buildPermissionRequest(context, status.missingPermissions.first);
+    }
+    return widget.child;
   }
 
-  Widget _buildPermissionRequest(
-    BuildContext context,
-    PermissionType type,
-  ) {
+  Widget _buildPermissionRequest(BuildContext context, PermissionType type) {
     return widget.onRequestPermission(
       context,
       type,
       () async {
         final manager = ref.read(permissionManagerProvider);
         await manager.requestPermission(type);
-        // Give time for user to grant permission in settings
         await Future.delayed(const Duration(seconds: 2));
         await _checkPermissions();
       },

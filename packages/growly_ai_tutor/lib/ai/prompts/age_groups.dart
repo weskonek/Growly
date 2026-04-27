@@ -1,4 +1,4 @@
-import '../../../growly_core/lib/domain/models/child_profile.dart';
+import 'package:growly_core/growly_core.dart';
 
 class AgeGroupConfig {
   final AgeGroup ageGroup;
