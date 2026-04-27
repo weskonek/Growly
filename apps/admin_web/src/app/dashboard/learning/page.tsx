@@ -61,7 +61,16 @@ async function getLearningStats(): Promise<{
   }
 }
 
-async function getRecentSessions() {
+interface SessionWithChild {
+  id: string
+  subject: string
+  started_at: string
+  duration_minutes: number
+  session_type: string
+  child_profiles: { name: string } | null
+}
+
+async function getRecentSessions(): Promise<SessionWithChild[]> {
   const { data } = await supabaseAdmin
     .from('learning_sessions')
     .select(`
@@ -75,7 +84,7 @@ async function getRecentSessions() {
     .order('started_at', { ascending: false })
     .limit(10)
 
-  return data ?? []
+  return (data as unknown as SessionWithChild[]) ?? []
 }
 
 const subjectLabels: Record<string, string> = {
@@ -155,7 +164,7 @@ export default async function LearningPage() {
                         {subjectLabels[session.subject] ?? session.subject}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {(session.child_profiles as { name: string })?.name ?? 'Unknown'} • {session.duration_minutes} min
+                        {session.child_profiles?.name ?? 'Unknown'} • {session.duration_minutes} min
                       </p>
                     </div>
                     <Badge variant="secondary">{session.session_type}</Badge>

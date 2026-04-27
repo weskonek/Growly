@@ -11,6 +11,11 @@ interface ScreenTimeStats {
   byAgeGroup: Record<string, number>
 }
 
+interface WeekRecord {
+  duration_minutes: number
+  child_profiles: { age_group: number } | null
+}
+
 async function getScreenTimeStats(): Promise<ScreenTimeStats> {
   const today = new Date().toISOString().split('T')[0]
 
@@ -37,8 +42,8 @@ async function getScreenTimeStats(): Promise<ScreenTimeStats> {
   let totalWeekMinutes = 0
   let count = 0
 
-  weekData?.forEach((record) => {
-    const ageGroup = (record.child_profiles as { age_group: number } | null)?.age_group ?? -1
+  ;(weekData as WeekRecord[] | null)?.forEach((record) => {
+    const ageGroup = record.child_profiles?.age_group ?? -1
     const label = ['Early Childhood', 'Primary', 'Upper Primary', 'Teen'][ageGroup] ?? 'Unknown'
     byAgeGroup[label] = (byAgeGroup[label] ?? 0) + record.duration_minutes
     totalWeekMinutes += record.duration_minutes

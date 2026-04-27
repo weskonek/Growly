@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Growly Child</string>
+
+    <!-- Accessibility Service Description (shown to user when enabling) -->
+    <string name="accessibility_service_description">Growly Accessibility Service digunakan untuk:\n\n• Mendeteksi aplikasi yang sedang digunakan oleh anak\n• Memblokir aplikasi yang tidak diizinkan oleh orang tua\n• Membantu memantau waktu layar\n\nService ini tidak mengumpulkan data pribadi atau keystrokes.</string>
+
+    <!-- Device Admin Description -->
+    <string name="device_admin_description">Growly Device Admin digunakan untuk:\n\n• Mengunci perangkat saat waktu belajar\n• Mencegah anak menghapus aplikasi\n• Mengatur batas waktu layar</string>
+
+    <!-- Notification Channel Names -->
+    <string name="monitor_channel_name">Screen Time Monitoring</string>
+    <string name="monitor_channel_description">Notifikasi untuk pemantauan waktu layar</string>
+</resources>

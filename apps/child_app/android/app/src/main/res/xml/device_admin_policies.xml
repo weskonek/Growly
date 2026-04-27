@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<device-admin xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-policies>
+        <!-- Required for locking device and resetting password -->
+        <force-lock />
+        <!-- Required for WIPE_DATA (factory reset on admin disable) -->
+        <wipe-data />
+        <!-- Required for password policies -->
+        <reset-password />
+        <!-- Required for screen capture blocking -->
+        <disable-camera />
+    </uses-policies>
+</device-admin>

@@ -1,8 +1,20 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/database/remote/supabase_service.dart';
+import '../../../data/repositories/child_repository_impl.dart';
+import '../../../data/repositories/learning_repository_impl.dart';
 import '../../domain/models/child_profile.dart';
+import '../../domain/repositories/child_repository.dart';
+import '../../domain/repositories/learning_repository.dart';
 
 part 'child_providers.g.dart';
+
+final childRepositoryProvider = Provider<IChildRepository>((ref) {
+  return ChildRepositoryImpl();
+});
+
+final learningRepositoryProvider = Provider<ILearningRepository>((ref) {
+  return LearningRepositoryImpl();
+});
 
 @riverpod
 class CurrentChild extends _$CurrentChild {
@@ -22,19 +34,16 @@ class CurrentChild extends _$CurrentChild {
 class ChildrenList extends _$ChildrenList {
   @override
   Future<List<ChildProfile>> build() async {
+    final repository = ref.watch(childRepositoryProvider);
     final supabase = SupabaseService.client;
     final user = supabase.auth.currentUser;
     if (user == null) return [];
 
-    final response = await supabase
-        .from('child_profiles')
-        .select()
-        .eq('parent_id', user.id)
-        .order('created_at');
-
-    return (response as List)
-        .map((json) => ChildProfile.fromJson(json as Map<String, dynamic>))
-        .toList();
+    final (children, failure) = await repository.getChildren(user.id);
+    if (failure != null) {
+      throw Exception(failure.message);
+    }
+    return children ?? [];
   }
 
   Future<void> refresh() async {
@@ -56,18 +65,11 @@ class SelectedChildId extends _$SelectedChildId {
 class ChildProgress extends _$ChildProgress {
   @override
   Future<Map<String, dynamic>> build(String childId) async {
-    final supabase = SupabaseService.client;
-
-    final progress = await supabase
-        .from('learning_progress')
-        .select()
-        .eq('child_id', childId)
-        .order('created_at', ascending: false)
-        .limit(50);
-
-    return {
-      'records': progress,
-      'totalActivities': (progress as List).length,
-    };
+    final repository = ref.watch(learningRepositoryProvider);
+    final (stats, failure) = await repository.getStats(childId);
+    if (failure != null) {
+      throw Exception(failure.message);
+    }
+    return stats ?? {};
   }
 }

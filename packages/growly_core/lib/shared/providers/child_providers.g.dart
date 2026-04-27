@@ -21,7 +21,7 @@ final currentChildProvider =
 );
 
 typedef _$CurrentChild = AutoDisposeNotifier<ChildProfile?>;
-String _$childrenListHash() => r'71e4b5497b8cbc729d3bb294d99af29e3f81f10e';
+String _$childrenListHash() => r'329a4acc86d0f7590c35eb8a4a7ca20e2631c6a7';
 
 /// See also [ChildrenList].
 @ProviderFor(ChildrenList)
@@ -52,7 +52,7 @@ final selectedChildIdProvider =
 );
 
 typedef _$SelectedChildId = AutoDisposeNotifier<String?>;
-String _$childProgressHash() => r'cb6fdfd0297a578e45c856f2d03b5454be335d86';
+String _$childProgressHash() => r'64bc4125af236bfe844e34586e3b580d345fb13d';
 
 /// Copied from Dart SDK
 class _SystemHash {
