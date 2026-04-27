@@ -1,19 +1,13 @@
-import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/database/remote/supabase_service.dart';
 
-part 'auth_providers.g.dart';
+/// Auth state notifier for managing authentication
+class AuthNotifier extends StateNotifier<User?> {
+  AuthNotifier() : super(SupabaseService.client.auth.currentUser);
 
-@riverpod
-class AuthNotifier extends _$AuthNotifier {
-  @override
-  User? build() {
-    return SupabaseService.client.auth.currentUser;
-  }
-
-  Stream<User?> get authStateChanges {
-    return SupabaseService.client.auth.onAuthStateChange.map((event) => event.session?.user);
-  }
+  Stream<User?> get authStateChanges =>
+      SupabaseService.client.auth.onAuthStateChange.map((event) => event.session?.user);
 
   Future<void> signIn({
     required String email,
@@ -46,14 +40,24 @@ class AuthNotifier extends _$AuthNotifier {
   }
 }
 
-@riverpod
-bool isAuthenticated(IsAuthenticatedRef ref) {
-  final authNotifier = ref.watch(authNotifierProvider);
-  return authNotifier != null;
-}
+/// Provider for auth notifier
+final authNotifierProvider = StateNotifierProvider<AuthNotifier, User?>((ref) {
+  return AuthNotifier();
+});
 
-@riverpod
-String? currentUserId(CurrentUserIdRef ref) {
-  final authNotifier = ref.watch(authNotifierProvider);
-  return authNotifier?.id;
-}
+/// Stream of auth state changes
+final authStateChangesProvider = StreamProvider<AuthState>((ref) {
+  return SupabaseService.client.auth.onAuthStateChange;
+});
+
+/// Check if user is authenticated
+final isAuthenticatedProvider = Provider<bool>((ref) {
+  final authState = ref.watch(authStateChangesProvider);
+  return authState.valueOrNull?.session?.user != null;
+});
+
+/// Get current user ID
+final currentUserIdProvider = Provider<String?>((ref) {
+  final authState = ref.watch(authStateChangesProvider);
+  return authState.valueOrNull?.session?.user?.id;
+});

@@ -1,45 +1,3 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
-
-part 'learning_progress.freezed.dart';
-part 'learning_progress.g.dart';
-
-@freezed
-class LearningProgress with _$LearningProgress {
-  const factory LearningProgress({
-    required String id,
-    required String childId,
-    required String subject,
-    required String topic,
-    @Default(0) int score,
-    @Default(false) bool completed,
-    DateTime? completedAt,
-    required DateTime createdAt,
-    DateTime? updatedAt,
-    String? sessionId,
-    @Default({}) Map<String, dynamic> metadata,
-  }) = _LearningProgress;
-
-  factory LearningProgress.fromJson(Map<String, dynamic> json) =>
-      _$LearningProgressFromJson(json);
-}
-
-@freezed
-class LearningSession with _$LearningSession {
-  const factory LearningSession({
-    required String id,
-    required String childId,
-    required String subject,
-    required DateTime startedAt,
-    DateTime? endedAt,
-    @Default(0) int durationMinutes,
-    @Default([]) List<String> topicsCovered,
-    @Default({}) Map<String, dynamic> data,
-  }) = _LearningSession;
-
-  factory LearningSession.fromJson(Map<String, dynamic> json) =>
-      _$LearningSessionFromJson(json);
-}
-
 enum Subject {
   reading,
   math,
@@ -77,5 +35,174 @@ extension SubjectX on Subject {
       case Subject.language:
         return '🗣️';
     }
+  }
+}
+
+class LearningProgress {
+  final String id;
+  final String childId;
+  final String subject;
+  final String topic;
+  final int score;
+  final bool completed;
+  final DateTime? completedAt;
+  final DateTime createdAt;
+  final DateTime? updatedAt;
+  final String? sessionId;
+  final Map<String, dynamic> metadata;
+
+  const LearningProgress({
+    required this.id,
+    required this.childId,
+    required this.subject,
+    required this.topic,
+    this.score = 0,
+    this.completed = false,
+    this.completedAt,
+    required this.createdAt,
+    this.updatedAt,
+    this.sessionId,
+    this.metadata = const {},
+  });
+
+  factory LearningProgress.fromJson(Map<String, dynamic> json) {
+    return LearningProgress(
+      id: json['id'] as String,
+      childId: json['child_id'] as String,
+      subject: json['subject'] as String,
+      topic: json['topic'] as String,
+      score: json['score'] as int? ?? 0,
+      completed: json['completed'] as bool? ?? false,
+      completedAt: json['completed_at'] != null
+          ? DateTime.parse(json['completed_at'] as String)
+          : null,
+      createdAt: DateTime.parse(json['created_at'] as String),
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'] as String)
+          : null,
+      sessionId: json['session_id'] as String?,
+      metadata: (json['metadata'] as Map<String, dynamic>?) ?? {},
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'child_id': childId,
+      'subject': subject,
+      'topic': topic,
+      'score': score,
+      'completed': completed,
+      'completed_at': completedAt?.toIso8601String(),
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt?.toIso8601String(),
+      'session_id': sessionId,
+      'metadata': metadata,
+    };
+  }
+
+  LearningProgress copyWith({
+    String? id,
+    String? childId,
+    String? subject,
+    String? topic,
+    int? score,
+    bool? completed,
+    DateTime? completedAt,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    String? sessionId,
+    Map<String, dynamic>? metadata,
+  }) {
+    return LearningProgress(
+      id: id ?? this.id,
+      childId: childId ?? this.childId,
+      subject: subject ?? this.subject,
+      topic: topic ?? this.topic,
+      score: score ?? this.score,
+      completed: completed ?? this.completed,
+      completedAt: completedAt ?? this.completedAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      sessionId: sessionId ?? this.sessionId,
+      metadata: metadata ?? this.metadata,
+    );
+  }
+}
+
+class LearningSession {
+  final String id;
+  final String childId;
+  final String subject;
+  final DateTime startedAt;
+  final DateTime? endedAt;
+  final int durationMinutes;
+  final List<String> topicsCovered;
+  final Map<String, dynamic> data;
+
+  const LearningSession({
+    required this.id,
+    required this.childId,
+    required this.subject,
+    required this.startedAt,
+    this.endedAt,
+    this.durationMinutes = 0,
+    this.topicsCovered = const [],
+    this.data = const {},
+  });
+
+  factory LearningSession.fromJson(Map<String, dynamic> json) {
+    return LearningSession(
+      id: json['id'] as String,
+      childId: json['child_id'] as String,
+      subject: json['subject'] as String,
+      startedAt: DateTime.parse(json['started_at'] as String),
+      endedAt: json['ended_at'] != null
+          ? DateTime.parse(json['ended_at'] as String)
+          : null,
+      durationMinutes: json['duration_minutes'] as int? ?? 0,
+      topicsCovered: (json['topics_covered'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [],
+      data: (json['data'] as Map<String, dynamic>?) ??
+          (json['metadata'] as Map<String, dynamic>?) ??
+          {},
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'child_id': childId,
+      'subject': subject,
+      'started_at': startedAt.toIso8601String(),
+      'ended_at': endedAt?.toIso8601String(),
+      'duration_minutes': durationMinutes,
+      'topics_covered': topicsCovered,
+      'metadata': data,
+    };
+  }
+
+  LearningSession copyWith({
+    String? id,
+    String? childId,
+    String? subject,
+    DateTime? startedAt,
+    DateTime? endedAt,
+    int? durationMinutes,
+    List<String>? topicsCovered,
+    Map<String, dynamic>? data,
+  }) {
+    return LearningSession(
+      id: id ?? this.id,
+      childId: childId ?? this.childId,
+      subject: subject ?? this.subject,
+      startedAt: startedAt ?? this.startedAt,
+      endedAt: endedAt ?? this.endedAt,
+      durationMinutes: durationMinutes ?? this.durationMinutes,
+      topicsCovered: topicsCovered ?? this.topicsCovered,
+      data: data ?? this.data,
+    );
   }
 }

@@ -1,4 +1,4 @@
-import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/remote/supabase_service.dart';
 import '../../../data/repositories/child_repository_impl.dart';
 import '../../../data/repositories/learning_repository_impl.dart';
@@ -6,22 +6,21 @@ import '../../domain/models/child_profile.dart';
 import '../../domain/repositories/child_repository.dart';
 import '../../domain/repositories/learning_repository.dart';
 
-part 'child_providers.g.dart';
-
+/// Provider for child repository
 final childRepositoryProvider = Provider<IChildRepository>((ref) {
   final client = SupabaseService.client;
   return ChildRepositoryImpl(client);
 });
 
+/// Provider for learning repository
 final learningRepositoryProvider = Provider<ILearningRepository>((ref) {
   final client = SupabaseService.client;
   return LearningRepositoryImpl(client);
 });
 
-@riverpod
-class CurrentChild extends _$CurrentChild {
-  @override
-  ChildProfile? build() => null;
+/// Provider for current selected child
+class CurrentChildNotifier extends StateNotifier<ChildProfile?> {
+  CurrentChildNotifier() : super(null);
 
   void setChild(ChildProfile child) {
     state = child;
@@ -32,8 +31,12 @@ class CurrentChild extends _$CurrentChild {
   }
 }
 
-@riverpod
-class ChildrenList extends _$ChildrenList {
+final currentChildProvider = StateNotifierProvider<CurrentChildNotifier, ChildProfile?>((ref) {
+  return CurrentChildNotifier();
+});
+
+/// Provider for list of children
+class ChildrenListNotifier extends AsyncNotifier<List<ChildProfile>> {
   @override
   Future<List<ChildProfile>> build() async {
     final repository = ref.watch(childRepositoryProvider);
@@ -53,25 +56,29 @@ class ChildrenList extends _$ChildrenList {
   }
 }
 
-@riverpod
-class SelectedChildId extends _$SelectedChildId {
-  @override
-  String? build() => null;
+final childrenListProvider = AsyncNotifierProvider<ChildrenListNotifier, List<ChildProfile>>(() {
+  return ChildrenListNotifier();
+});
+
+/// Provider for selected child ID
+class SelectedChildIdNotifier extends StateNotifier<String?> {
+  SelectedChildIdNotifier() : super(null);
 
   void select(String childId) {
     state = childId;
   }
 }
 
-@riverpod
-class ChildProgress extends _$ChildProgress {
-  @override
-  Future<Map<String, dynamic>> build(String childId) async {
-    final repository = ref.watch(learningRepositoryProvider);
-    final (stats, failure) = await repository.getStats(childId);
-    if (failure != null) {
-      throw Exception(failure.message);
-    }
-    return stats ?? {};
+final selectedChildIdProvider = StateNotifierProvider<SelectedChildIdNotifier, String?>((ref) {
+  return SelectedChildIdNotifier();
+});
+
+/// Provider for child progress/stats
+final childProgressProvider = FutureProvider.family<Map<String, dynamic>, String>((ref, childId) async {
+  final repository = ref.watch(learningRepositoryProvider);
+  final (stats, failure) = await repository.getStats(childId);
+  if (failure != null) {
+    throw Exception(failure.message);
   }
-}
+  return stats ?? {};
+});

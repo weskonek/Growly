@@ -1,53 +1,52 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
+sealed class Failure {
+  final String message;
+  final int? code;
 
-part 'failures.freezed.dart';
+  const Failure({required this.message, this.code});
 
-@freezed
-class Failure with _$Failure {
-  const factory Failure.server({
-    required String message,
-    int? code,
-  }) = ServerFailure;
-
-  const factory Failure.network({
-    required String message,
-  }) = NetworkFailure;
-
-  const factory Failure.cache({
-    required String message,
-  }) = CacheFailure;
-
-  const factory Failure.auth({
-    required String message,
-  }) = AuthFailure;
-
-  const factory Failure.validation({
-    required String message,
-    Map<String, String>? fieldErrors,
-  }) = ValidationFailure;
-
-  const factory Failure.database({
-    required String message,
-  }) = DatabaseFailure;
-
-  const factory Failure.unknown({
-    required String message,
-  }) = UnknownFailure;
-}
-
-extension FailureX on Failure {
   String get userFriendlyMessage {
-    return when(
-      server: (msg, _) => msg,
-      network: (msg) => 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.',
-      cache: (msg) => 'Terjadi kesalahan pada sistem. Silakan coba lagi.',
-      auth: (msg) => msg,
-      validation: (msg, _) => msg,
-      database: (msg) => 'Terjadi kesalahan pada database.',
-      unknown: (msg) => 'Terjadi kesalahan yang tidak diketahui.',
-    );
+    if (this is NetworkFailure) {
+      return 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
+    } else if (this is DatabaseFailure) {
+      return 'Terjadi kesalahan pada database.';
+    } else if (this is AuthFailure) {
+      return message;
+    } else if (this is ServerFailure) {
+      return message;
+    }
+    return 'Terjadi kesalahan. Silakan coba lagi.';
   }
 
   bool get isNetworkError => this is NetworkFailure;
   bool get isAuthError => this is AuthFailure;
+}
+
+class ServerFailure extends Failure {
+  const ServerFailure({required String message, int? code}) : super(message: message, code: code);
+}
+
+class NetworkFailure extends Failure {
+  const NetworkFailure({required String message}) : super(message: message);
+}
+
+class CacheFailure extends Failure {
+  const CacheFailure({required String message}) : super(message: message);
+}
+
+class AuthFailure extends Failure {
+  const AuthFailure({required String message}) : super(message: message);
+}
+
+class ValidationFailure extends Failure {
+  final Map<String, String>? fieldErrors;
+
+  const ValidationFailure({required String message, this.fieldErrors}) : super(message: message);
+}
+
+class DatabaseFailure extends Failure {
+  const DatabaseFailure({required String message}) : super(message: message);
+}
+
+class UnknownFailure extends Failure {
+  const UnknownFailure({required String message}) : super(message: message);
 }
