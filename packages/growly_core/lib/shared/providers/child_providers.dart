@@ -9,11 +9,13 @@ import '../../domain/repositories/learning_repository.dart';
 part 'child_providers.g.dart';
 
 final childRepositoryProvider = Provider<IChildRepository>((ref) {
-  return ChildRepositoryImpl();
+  final client = SupabaseService.client;
+  return ChildRepositoryImpl(client);
 });
 
 final learningRepositoryProvider = Provider<ILearningRepository>((ref) {
-  return LearningRepositoryImpl();
+  final client = SupabaseService.client;
+  return LearningRepositoryImpl(client);
 });
 
 @riverpod

@@ -2,12 +2,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/repositories/learning_repository.dart';
 import '../../domain/models/learning_progress.dart';
 import '../../core/errors/failures.dart';
-import '../../core/database/remote/supabase_service.dart';
 
 class LearningRepositoryImpl implements ILearningRepository {
-  SupabaseClient get _client => SupabaseService.client;
+  final SupabaseClient _client;
 
-  LearningRepositoryImpl();
+  LearningRepositoryImpl(this._client);
 
   @override
   Future<(List<LearningProgress>?, Failure?)> getProgress(String childId, {int limit = 50}) async {
