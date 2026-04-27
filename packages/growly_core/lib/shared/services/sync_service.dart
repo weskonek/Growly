@@ -26,7 +26,12 @@ class SyncService {
         .onPostgresChanges(
           schema: 'public',
           table: table,
-          filter: Filter.eq('child_id', childId),
+          filter: PostgresChangeFilter(
+            type: PostgresChangeEvent.all,
+            schema: 'public',
+            table: table,
+            columns: ['*'],
+          ),
           event: PostgresChangeEvent.all,
         )
         .map((change) => change.newRecord as Map<String, dynamic>);

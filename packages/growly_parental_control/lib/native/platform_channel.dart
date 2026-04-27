@@ -1,7 +1,5 @@
 import 'package:flutter/services.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
-
-part 'platform_channel.g.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class ParentalControlChannel {
   static const _channel = MethodChannel('com.growly/parental_control');
@@ -77,7 +75,6 @@ class ParentalControlChannel {
   }
 }
 
-@riverpod
-ParentalControlChannel parentalControlChannel(ParentalControlChannelRef ref) {
+final parentalControlChannelProvider = Provider<ParentalControlChannel>((ref) {
   return ParentalControlChannel();
-}
+});

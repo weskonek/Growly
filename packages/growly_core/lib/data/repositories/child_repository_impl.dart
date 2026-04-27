@@ -24,7 +24,7 @@ class ChildRepositoryImpl implements IChildRepository {
 
       return (children, null);
     } on PostgrestException catch (e) {
-      return (null, Failure.database(message: e.message));
+      return (null, DatabaseFailure(message: e.message));
     } catch (e) {
       return (null, UnknownFailure(message: e.toString()));
     }
