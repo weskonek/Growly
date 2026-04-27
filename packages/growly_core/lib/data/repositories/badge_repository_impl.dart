@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/repositories/badge_repository.dart';
 import '../../domain/models/badge.dart';
 import '../../core/errors/failures.dart';
+import '../../domain/models/reward_system.dart';
 import '../../core/database/remote/supabase_service.dart';
 
 class BadgeRepositoryImpl implements IBadgeRepository {
@@ -24,7 +25,7 @@ class BadgeRepositoryImpl implements IBadgeRepository {
 
       return (badges, null);
     } catch (e) {
-      return (null, Failure.database(message: e.toString()));
+      return (null, DatabaseFailure(message: e.toString()));
     }
   }
 
@@ -39,9 +40,9 @@ class BadgeRepositoryImpl implements IBadgeRepository {
           .select()
           .single();
 
-      return (Badge.fromJson(response as Map<String, dynamic>), null);
+      return (Badge.fromJson(Map<String, dynamic>.from(response)), null);
     } catch (e) {
-      return (null, Failure.database(message: e.toString()));
+      return (null, DatabaseFailure(message: e.toString()));
     }
   }
 
@@ -58,9 +59,9 @@ class BadgeRepositoryImpl implements IBadgeRepository {
         return (RewardSystem(childId: childId), null);
       }
 
-      return (RewardSystem.fromJson(response as Map<String, dynamic>), null);
+      return (RewardSystem.fromJson(Map<String, dynamic>.from(response)), null);
     } catch (e) {
-      return (null, Failure.database(message: e.toString()));
+      return (null, DatabaseFailure(message: e.toString()));
     }
   }
 
@@ -75,9 +76,9 @@ class BadgeRepositoryImpl implements IBadgeRepository {
           .select()
           .single();
 
-      return (RewardSystem.fromJson(response as Map<String, dynamic>), null);
+      return (RewardSystem.fromJson(Map<String, dynamic>.from(response)), null);
     } catch (e) {
-      return (null, Failure.database(message: e.toString()));
+      return (null, DatabaseFailure(message: e.toString()));
     }
   }
 

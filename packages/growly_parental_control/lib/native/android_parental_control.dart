@@ -1,4 +1,5 @@
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class AndroidParentalControl {
   static const _channel = MethodChannel('com.growly/android_parental_control');
@@ -133,9 +134,6 @@ class AndroidParentalControl {
     await _channel.invokeMethod('removeDeviceAdmin');
   }
 }
-
-/// Provider for AndroidParentalControl
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final androidParentalControlProvider = Provider<AndroidParentalControl>((ref) {
   return AndroidParentalControl();
