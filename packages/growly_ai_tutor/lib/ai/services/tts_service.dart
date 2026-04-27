@@ -58,7 +58,7 @@ class TtsService {
     await _flutterTts.pause();
   }
 
-  bool get isSpeaking => _flutterTts.getIsSpeaking() as bool? ?? false;
+  bool get isSpeaking => false; // Placeholder - TTS state check requires async
 
   void dispose() {
     _flutterTts.stop();
