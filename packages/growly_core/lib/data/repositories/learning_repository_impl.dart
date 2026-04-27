@@ -24,7 +24,7 @@ class LearningRepositoryImpl implements ILearningRepository {
 
       return (progress, null);
     } catch (e) {
-      return (null, Failure.database(message: e.toString()));
+      return (null, DatabaseFailure(message: e.toString()));
     }
   }
 
@@ -55,7 +55,7 @@ class LearningRepositoryImpl implements ILearningRepository {
 
       return (sessions, null);
     } catch (e) {
-      return (null, Failure.database(message: e.toString()));
+      return (null, DatabaseFailure(message: e.toString()));
     }
   }
 
@@ -72,7 +72,7 @@ class LearningRepositoryImpl implements ILearningRepository {
 
       return (LearningProgress.fromJson(response as Map<String, dynamic>), null);
     } catch (e) {
-      return (null, Failure.database(message: e.toString()));
+      return (null, DatabaseFailure(message: e.toString()));
     }
   }
 
@@ -91,7 +91,7 @@ class LearningRepositoryImpl implements ILearningRepository {
 
       return (LearningSession.fromJson(response as Map<String, dynamic>), null);
     } catch (e) {
-      return (null, Failure.database(message: e.toString()));
+      return (null, DatabaseFailure(message: e.toString()));
     }
   }
 
@@ -120,7 +120,7 @@ class LearningRepositoryImpl implements ILearningRepository {
 
       return (LearningSession.fromJson(response as Map<String, dynamic>), null);
     } catch (e) {
-      return (null, Failure.database(message: e.toString()));
+      return (null, DatabaseFailure(message: e.toString()));
     }
   }
 
@@ -144,7 +144,7 @@ class LearningRepositoryImpl implements ILearningRepository {
         'records': progress,
       }, null);
     } catch (e) {
-      return (null, Failure.database(message: e.toString()));
+      return (null, DatabaseFailure(message: e.toString()));
     }
   }
 }

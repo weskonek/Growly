@@ -28,7 +28,7 @@ class ScreenTimeRepositoryImpl implements IScreenTimeRepository {
 
       return (records, null);
     } catch (e) {
-      return (null, Failure.database(message: e.toString()));
+      return (null, DatabaseFailure(message: e.toString()));
     }
   }
 
@@ -47,7 +47,7 @@ class ScreenTimeRepositoryImpl implements IScreenTimeRepository {
         appBreakdown: {},
       ), null);
     } catch (e) {
-      return (null, Failure.database(message: e.toString()));
+      return (null, DatabaseFailure(message: e.toString()));
     }
   }
 
@@ -71,7 +71,7 @@ class ScreenTimeRepositoryImpl implements IScreenTimeRepository {
 
       return (ScreenTimeSettings.fromJson(response as Map<String, dynamic>), null);
     } catch (e) {
-      return (null, Failure.database(message: e.toString()));
+      return (null, DatabaseFailure(message: e.toString()));
     }
   }
 
@@ -88,7 +88,7 @@ class ScreenTimeRepositoryImpl implements IScreenTimeRepository {
 
       return (ScreenTimeSettings.fromJson(response as Map<String, dynamic>), null);
     } catch (e) {
-      return (null, Failure.database(message: e.toString()));
+      return (null, DatabaseFailure(message: e.toString()));
     }
   }
 
@@ -113,7 +113,7 @@ class ScreenTimeRepositoryImpl implements IScreenTimeRepository {
 
       return (true, null);
     } catch (e) {
-      return (false, Failure.database(message: e.toString()));
+      return (false, DatabaseFailure(message: e.toString()));
     }
   }
 }

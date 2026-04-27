@@ -2,7 +2,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/repositories/badge_repository.dart';
 import '../../domain/models/badge.dart';
 import '../../core/errors/failures.dart';
-import '../../domain/models/reward_system.dart';
 import '../../core/database/remote/supabase_service.dart';
 
 class BadgeRepositoryImpl implements IBadgeRepository {
@@ -99,7 +98,7 @@ class BadgeRepositoryImpl implements IBadgeRepository {
       await updateRewardSystem(updated);
       return (true, null);
     } catch (e) {
-      return (false, Failure.database(message: e.toString()));
+      return (false, DatabaseFailure(message: e.toString()));
     }
   }
 
@@ -117,7 +116,7 @@ class BadgeRepositoryImpl implements IBadgeRepository {
       await updateRewardSystem(updated);
       return (true, null);
     } catch (e) {
-      return (false, Failure.database(message: e.toString()));
+      return (false, DatabaseFailure(message: e.toString()));
     }
   }
 }

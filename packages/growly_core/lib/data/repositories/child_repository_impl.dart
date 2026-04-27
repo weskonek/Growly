@@ -26,7 +26,7 @@ class ChildRepositoryImpl implements IChildRepository {
     } on PostgrestException catch (e) {
       return (null, Failure.database(message: e.message));
     } catch (e) {
-      return (null, Failure.unknown(message: e.toString()));
+      return (null, UnknownFailure(message: e.toString()));
     }
   }
 
@@ -41,7 +41,7 @@ class ChildRepositoryImpl implements IChildRepository {
 
       return (ChildProfile.fromJson(response as Map<String, dynamic>), null);
     } catch (e) {
-      return (null, Failure.database(message: e.toString()));
+      return (null, DatabaseFailure(message: e.toString()));
     }
   }
 
@@ -59,7 +59,7 @@ class ChildRepositoryImpl implements IChildRepository {
 
       return (ChildProfile.fromJson(response as Map<String, dynamic>), null);
     } catch (e) {
-      return (null, Failure.database(message: e.toString()));
+      return (null, DatabaseFailure(message: e.toString()));
     }
   }
 
@@ -77,7 +77,7 @@ class ChildRepositoryImpl implements IChildRepository {
 
       return (ChildProfile.fromJson(response as Map<String, dynamic>), null);
     } catch (e) {
-      return (null, Failure.database(message: e.toString()));
+      return (null, DatabaseFailure(message: e.toString()));
     }
   }
 
@@ -87,7 +87,7 @@ class ChildRepositoryImpl implements IChildRepository {
       await _client.from('child_profiles').delete().eq('id', childId);
       return (true, null);
     } catch (e) {
-      return (false, Failure.database(message: e.toString()));
+      return (false, DatabaseFailure(message: e.toString()));
     }
   }
 
@@ -101,7 +101,7 @@ class ChildRepositoryImpl implements IChildRepository {
 
       return (response['success'] as bool, null);
     } catch (e) {
-      return (false, Failure.database(message: e.toString()));
+      return (false, DatabaseFailure(message: e.toString()));
     }
   }
 }

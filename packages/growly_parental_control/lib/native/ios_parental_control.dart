@@ -1,14 +1,8 @@
 import 'package:flutter/services.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-part 'ios_parental_control.g.dart';
-
-@riverpod
-class IosParentalControl extends _$IosParentalControl {
+class IosParentalControl {
   static const _channel = MethodChannel('com.growly/ios_parental_control');
-
-  @override
-  bool build() => true;
 
   Future<bool> requestScreenTimePermission() async {
     try {
@@ -108,3 +102,7 @@ class IosParentalControl extends _$IosParentalControl {
     }
   }
 }
+
+final iosParentalControlProvider = Provider<IosParentalControl>((ref) {
+  return IosParentalControl();
+});
