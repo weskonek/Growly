@@ -8,7 +8,13 @@ import '../../features/auth/presentation/pages/forgot_password_page.dart';
 import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../../features/children/presentation/pages/children_list_page.dart';
 import '../../features/children/presentation/pages/add_child_page.dart';
+import '../../features/children/presentation/pages/child_detail_page.dart';
 import '../../features/parental_control/presentation/pages/parental_control_page.dart';
+import '../../features/parental_control/presentation/pages/screen_time_page.dart';
+import '../../features/parental_control/presentation/pages/app_lock_page.dart';
+import '../../features/parental_control/presentation/pages/school_mode_page.dart';
+import '../../features/parental_control/presentation/pages/safe_mode_page.dart';
+import '../../features/parental_control/presentation/pages/location_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
 import '../providers/auth_provider.dart';
 
@@ -62,12 +68,56 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 name: 'add-child',
                 builder: (context, state) => const AddChildPage(),
               ),
+              GoRoute(
+                path: 'detail/:childId',
+                name: 'child-detail',
+                builder: (context, state) => ChildDetailPage(
+                  childId: state.pathParameters['childId']!,
+                ),
+              ),
             ],
           ),
           GoRoute(
             path: '/parental-control',
             name: 'parental-control',
             builder: (context, state) => const ParentalControlPage(),
+            routes: [
+              GoRoute(
+                path: 'screen-time/:childId',
+                name: 'screen-time',
+                builder: (context, state) => ScreenTimePage(
+                  childId: state.pathParameters['childId']!,
+                ),
+              ),
+              GoRoute(
+                path: 'app-lock/:childId',
+                name: 'app-lock',
+                builder: (context, state) => AppLockPage(
+                  childId: state.pathParameters['childId']!,
+                ),
+              ),
+              GoRoute(
+                path: 'school-mode/:childId',
+                name: 'school-mode',
+                builder: (context, state) => SchoolModePage(
+                  childId: state.pathParameters['childId']!,
+                ),
+              ),
+              GoRoute(
+                path: 'safe-mode/:childId',
+                name: 'safe-mode',
+                builder: (context, state) => SafeModePage(
+                  childId: state.pathParameters['childId']!,
+                ),
+              ),
+              GoRoute(
+                path: 'location/:childId',
+                name: 'location',
+                builder: (context, state) => LocationPage(
+                  childId: state.pathParameters['childId']!,
+                ),
+              ),
+            ],
           ),
           GoRoute(
             path: '/settings',

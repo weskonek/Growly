@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:growly_core/growly_core.dart';
 
 /// Currently selected child profile in child app
@@ -26,8 +27,9 @@ final screenTimeRemainingProvider =
 
   final repository2 = ref.watch(appRestrictionRepositoryProvider);
   final (restrictions, _) = await repository2.getRestrictions(childId);
-  final limit = restrictions?.isNotEmpty == true
-      ? (restrictions!.first.scheduleLimits['daily_limit'] as int? ?? 120)
+  final allRestrictions = restrictions ?? [];
+  final limit = allRestrictions.isNotEmpty
+      ? (allRestrictions.first.scheduleLimits['daily_limit'] ?? 120)
       : 120;
 
   return (limit - (daily?.totalMinutes ?? 0)).clamp(0, limit);
@@ -66,4 +68,14 @@ final appRestrictionRepositoryProvider =
 /// Screen time repository provider (child app)
 final screenTimeRepositoryProvider = Provider<IScreenTimeRepository>((ref) {
   return ScreenTimeRepositoryImpl();
+});
+
+/// Badge repository provider (child app)
+final badgeRepositoryProvider = Provider<IBadgeRepository>((ref) {
+  return BadgeRepositoryImpl();
+});
+
+/// Learning repository provider (child app)
+final learningRepositoryProvider = Provider<ILearningRepository>((ref) {
+  return LearningRepositoryImpl(Supabase.instance.client);
 });

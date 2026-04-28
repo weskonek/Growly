@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:growly_core/growly_core.dart';
-import '../../launcher/providers/launcher_providers.dart';
+import '../../launcher/providers/launcher_providers.dart' as launcher;
 
 /// Static subjects catalog (replace with courses table query when added)
 final subjectsProvider =
@@ -57,7 +58,7 @@ class LearningSessionNotifier extends AsyncNotifier<String?> {
   Future<String?> build() async => null;
 
   Future<void> startSession(String subject) async {
-    final child = ref.read(currentChildProvider).valueOrNull;
+    final child = await ref.read(launcher.currentChildProvider.future);
     if (child == null) return;
 
     final repository = ref.read(learningRepositoryProvider);
@@ -89,5 +90,5 @@ final learningSessionProvider =
 
 /// Learning repository provider (child app)
 final learningRepositoryProvider = Provider<ILearningRepository>((ref) {
-  return LearningRepositoryImpl();
+  return LearningRepositoryImpl(Supabase.instance.client);
 });

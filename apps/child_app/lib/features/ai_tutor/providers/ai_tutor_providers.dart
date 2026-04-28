@@ -1,7 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
-import 'package:growly_core/growly_core.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/config/env.dart';
+import '../../launcher/providers/launcher_providers.dart' as launcher;
 
 /// Chat message model
 class ChatMessage {
@@ -61,9 +62,8 @@ class AiTutorNotifier extends AsyncNotifier<AiTutorState> {
   Future<void> sendMessage(String text, {String mode = 'general'}) async {
     final currentState = state.valueOrNull ?? const AiTutorState();
 
-    // Get child from currentChildProvider
-    final childAsync = ref.read(currentChildProvider);
-    final child = childAsync.valueOrNull;
+    // Get child from launcher currentChildProvider
+    final child = await ref.read(launcher.currentChildProvider.future);
     if (child == null) return;
 
     // Add user message immediately
@@ -81,7 +81,7 @@ class AiTutorNotifier extends AsyncNotifier<AiTutorState> {
 
     try {
       // Call Supabase Edge Function ai-tutor
-      final client = SupabaseService.client;
+      final client = Supabase.instance.client;
       final session = client.auth.currentSession;
       final supabaseUrl = AppEnv.supabaseUrl;
       final anonKey = AppEnv.supabaseAnonKey;
@@ -144,17 +144,15 @@ final aiTutorProvider =
 /// Session history from ai_tutor_sessions table
 final aiSessionHistoryProvider =
     FutureProvider<List<Map<String, dynamic>>>((ref) async {
-  final child = ref.read(currentChildProvider).valueOrNull;
+  final child = await ref.read(launcher.currentChildProvider.future);
   if (child == null) return [];
 
-  final result = await SupabaseService.client
+  final data = await Supabase.instance.client
       .from('ai_tutor_sessions')
       .select()
       .eq('child_id', child.id)
       .order('created_at', ascending: false)
       .limit(20);
 
-  if (result.error != null) return [];
-  final List<dynamic> data = result.data ?? [];
-  return List<Map<String, dynamic>>.from(data);
+  return List<Map<String, dynamic>>.from(data as List);
 });
