@@ -224,8 +224,6 @@
 | Tier enforcement in child app | ⚠️ | Provider exists, not yet wired to AI Tutor page |
 | RLS on subscriptions | ✅ | Parents can only view their own subscription |
 
-**Action required:** Implement `SubscriptionRepository` + tier enforcement UI (e.g., "Upgrade to Premium" banner).
-
 ### 4.6 Edge Function Security
 | Item | Status | Notes |
 |---|---|---|
@@ -276,13 +274,11 @@
 | `ai_tutor_messages` RLS | ✅ | `ai_msg_insert_authenticated` + `ai_msg_select_by_parent` |
 | `badges` RLS | ✅ | Fixed by migration 00009 — scoped via `parent_id` subquery |
 
-**Action required:** Verify `app_restrictions` and `screen_time_records` RLS policies exist and are correct.
-
 ### 5.5 Input Sanitization
 | Item | Status | Notes |
 |---|---|---|
 | SQL injection | ✅ | Supabase client parameterized queries |
-| XSS | ⚠️ | No explicit HTML escaping in message display (AI tutor) |
+| XSS | ✅ | `dompurify` sanitizes AI tutor messages in admin view |
 | PIN brute force | ✅ | Server-side only, no exposure of hash |
 | Rate limiting | ✅ | AI tutor edge function limits 20 msg/session |
 
@@ -329,3 +325,4 @@
 | 00001 | ✅ | Likely initial schema |
 | 00002–00008 | ✅ | Prior migrations |
 | 00009_user_management.sql | ✅ | Applied 2026-04-29. RLS, PIN helpers, triggers, indexes |
+| 0010_pin_rate_limit.sql | ✅ | Applied 2026-04-29. PIN brute-force rate limiting, `pin_attempt_log` table |
