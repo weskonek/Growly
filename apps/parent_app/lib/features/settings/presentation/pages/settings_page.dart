@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:growly_core/growly_core.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:parent_app/features/settings/providers/settings_providers.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {

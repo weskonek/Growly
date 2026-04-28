@@ -23,7 +23,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   void _subscribeRealtime() {
     Supabase.instance.client
         .channel('dashboard-parent-${Supabase.instance.client.auth.currentUser?.id}')
-        .onpostgresChanges(
+        .onPostgresChanges(
           event: PostgresChangeEvent.insert,
           schema: 'public',
           table: 'screen_time_records',
@@ -31,7 +31,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             ref.invalidate(dashboardStatsProvider);
           },
         )
-        .onpostgresChanges(
+        .onPostgresChanges(
           event: PostgresChangeEvent.insert,
           schema: 'public',
           table: 'learning_sessions',
