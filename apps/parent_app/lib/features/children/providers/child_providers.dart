@@ -1,0 +1,134 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:growly_core/growly_core.dart';
+import '../../../core/database/remote/supabase_service.dart';
+
+/// Re-export children providers from growly_core for parent app feature usage
+export 'package:growly_core/shared/providers/child_providers.dart'
+    show childrenListProvider, currentChildProvider, selectedChildIdProvider;
+
+/// Selected child detail provider — fetches one child by ID
+final selectedChildDetailProvider =
+    FutureProvider.family<ChildProfile?, String>((ref, childId) async {
+  final repository = ref.watch(childRepositoryProvider);
+  final (child, failure) = await repository.getChild(childId);
+  if (failure != null) return null;
+  return child;
+});
+
+/// Create child notifier
+class CreateChildNotifier extends AsyncNotifier<ChildProfile?> {
+  @override
+  Future<ChildProfile?> build() async => null;
+
+  Future<ChildProfile?> createChild({
+    required String name,
+    required DateTime birthDate,
+    String? avatarUrl,
+    String? pin,
+  }) async {
+    state = const AsyncLoading();
+    final user = SupabaseService.client.auth.currentUser;
+    if (user == null) {
+      state = AsyncError('Not authenticated', StackTrace.current);
+      return null;
+    }
+
+    final ageGroup = ChildProfile.calculateAgeGroup(birthDate);
+    final child = ChildProfile(
+      id: '',
+      name: name,
+      birthDate: birthDate,
+      avatarUrl: avatarUrl,
+      ageGroup: ageGroup,
+      parentId: user.id,
+      createdAt: DateTime.now(),
+      settings: {},
+    );
+
+    final repository = ref.read(childRepositoryProvider);
+    final (result, failure) = await repository.createChild(child);
+    if (failure != null) {
+      state = AsyncError(failure.message, StackTrace.current);
+      return null;
+    }
+    ref.invalidate(childrenListProvider);
+    state = AsyncData(result!);
+    return result;
+  }
+}
+
+final createChildProvider =
+    AsyncNotifierProvider<CreateChildNotifier, ChildProfile?>(() {
+  return CreateChildNotifier();
+});
+
+/// Update child notifier
+class UpdateChildNotifier extends AsyncNotifier<ChildProfile?> {
+  @override
+  Future<ChildProfile?> build() async => null;
+
+  Future<void> updateChild(ChildProfile child) async {
+    state = const AsyncLoading();
+    final repository = ref.read(childRepositoryProvider);
+    final (result, failure) = await repository.updateChild(child);
+    if (failure != null) {
+      state = AsyncError(failure.message, StackTrace.current);
+    } else {
+      ref.invalidate(childrenListProvider);
+      state = AsyncData(result!);
+    }
+  }
+}
+
+final updateChildProvider =
+    AsyncNotifierProvider<UpdateChildNotifier, ChildProfile?>(() {
+  return UpdateChildNotifier();
+});
+
+/// Delete child notifier (soft delete)
+class DeleteChildNotifier extends AsyncNotifier<bool> {
+  @override
+  Future<bool> build() async => false;
+
+  Future<bool> deleteChild(String childId) async {
+    state = const AsyncLoading();
+    final client = SupabaseService.client;
+
+    final result = await client
+        .from('child_profiles')
+        .update({
+          'is_active': false,
+          'updated_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', childId);
+
+    if (result.error != null) {
+      state = AsyncError(result.error!.message, StackTrace.current);
+      return false;
+    }
+    ref.invalidate(childrenListProvider);
+    state = const AsyncData(true);
+    return true;
+  }
+}
+
+final deleteChildProvider =
+    AsyncNotifierProvider<DeleteChildNotifier, bool>(() {
+  return DeleteChildNotifier();
+});
+
+/// App restriction repository provider
+final appRestrictionRepositoryProvider =
+    Provider<IAppRestrictionRepository>((ref) {
+  return AppRestrictionRepositoryImpl();
+});
+
+/// Badge repository provider
+final badgeRepositoryProvider = Provider<IBadgeRepository>((ref) {
+  return BadgeRepositoryImpl();
+});
+
+/// Screen time repository provider
+final screenTimeRepositoryProvider = Provider<IScreenTimeRepository>((ref) {
+  return ScreenTimeRepositoryImpl();
+});
