@@ -14,7 +14,9 @@ class SupabaseService {
 
   static SupabaseClient get client {
     if (_instance == null) {
-      throw Exception('Supabase not initialized. Call SupabaseService.init() first.');
+      // Fallback: use Supabase.instance if SupabaseService.init() wasn't called
+      // but Supabase.initialize() was called directly in app main()
+      return Supabase.instance.client;
     }
     return _instance!;
   }
