@@ -12,8 +12,11 @@ import '../../features/rewards/presentation/pages/rewards_page.dart';
 /// Exposed so child_launcher_page.dart can write to it after PIN verification
 final verifiedChildIdProvider = StateProvider<String?>((ref) => null);
 
-/// Router provider for child app with PIN gate protection
+/// Router provider for child app with PIN gate protection.
+/// Uses refreshListenable so redirect re-evaluates when verifiedChildIdProvider changes.
 final childRouterProvider = Provider<GoRouter>((ref) {
+  final notifier = _VerifiedIdNotifier(ref);
+
   return GoRouter(
     initialLocation: '/launcher',
     redirect: (context, state) {
@@ -24,6 +27,7 @@ final childRouterProvider = Provider<GoRouter>((ref) {
 
       return null;
     },
+    refreshListenable: notifier,
     routes: [
       GoRoute(
         path: '/launcher',
