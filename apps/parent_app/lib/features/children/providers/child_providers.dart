@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:growly_core/growly_core.dart';
-import '../../../core/database/remote/supabase_service.dart';
 
 /// Re-export children providers from growly_core for parent app feature usage
 export 'package:growly_core/shared/providers/child_providers.dart'
@@ -27,7 +27,7 @@ class CreateChildNotifier extends AsyncNotifier<ChildProfile?> {
     String? pin,
   }) async {
     state = const AsyncLoading();
-    final user = SupabaseService.client.auth.currentUser;
+    final user = Supabase.instance.client.auth.currentUser;
     if (user == null) {
       state = AsyncError('Not authenticated', StackTrace.current);
       return null;
@@ -92,7 +92,7 @@ class DeleteChildNotifier extends AsyncNotifier<bool> {
 
   Future<bool> deleteChild(String childId) async {
     state = const AsyncLoading();
-    final client = SupabaseService.client;
+    final client = Supabase.instance.client;
 
     final result = await client
         .from('child_profiles')

@@ -1,21 +1,21 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:growly_core/growly_core.dart';
-import '../../auth/presentation/pages/login_page.dart';
 
 /// Parent profile provider
 final parentProfileProvider =
     FutureProvider<Map<String, dynamic>>((ref) async {
-  final user = SupabaseService.client.auth.currentUser;
+  final user = Supabase.instance.client.auth.currentUser;
   if (user == null) throw Exception('Not authenticated');
 
-  final { data, error } = await SupabaseService.client
+  final result = await Supabase.instance.client
       .from('parent_profiles')
       .select()
       .eq('id', user.id)
       .single();
 
-  if (error != null) throw Exception(error.message);
-  return Map<String, dynamic>.from(data);
+  if (result.error != null) throw Exception(result.error!.message);
+  return Map<String, dynamic>.from(result.data as Map<String, dynamic>);
 });
 
 /// Update parent profile notifier
@@ -23,7 +23,7 @@ class UpdateParentProfileNotifier
     extends AsyncNotifier<Map<String, dynamic>> {
   @override
   Future<Map<String, dynamic>> build() async {
-    return ref.invalidate(parentProfileProvider);
+    return ref.watch(parentProfileProvider.future);
   }
 
   Future<void> updateProfile({
@@ -46,20 +46,18 @@ class UpdateParentProfileNotifier
     if (phone != null) updates['phone'] = phone;
     if (avatarUrl != null) updates['avatar_url'] = avatarUrl;
     if (pinEnabled != null) {
-      final current =
-          (await ref.read(parentProfileProvider.future))['settings'] as Map? ?? {};
+      final current = (await ref.read(parentProfileProvider.future))['settings'] as Map? ?? {};
       updates['settings'] = {...current, 'pin_enabled': pinEnabled};
     }
 
-    final { error } = await SupabaseService.client
+    final result = await SupabaseService.client
         .from('parent_profiles')
         .update(updates)
         .eq('id', user.id);
 
-    if (error != null) {
-      state = AsyncError(error.message, StackTrace.current);
+    if (result.error != null) {
+      state = AsyncError(result.error!.message, StackTrace.current);
     } else {
-      ref.invalidate(parentProfileProvider);
       state = await ref.read(parentProfileProvider.future);
     }
   }

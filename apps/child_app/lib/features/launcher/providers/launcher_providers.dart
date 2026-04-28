@@ -2,10 +2,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:growly_core/growly_core.dart';
 
 /// Currently selected child profile in child app
-/// Stored after PIN verification via flutter_secure_storage
+/// Fetches from Supabase using child ID stored in flutter_secure_storage
+/// TODO: integrate with flutter_secure_storage after PIN verification
 final currentChildProvider = FutureProvider<ChildProfile?>((ref) async {
-  // TODO: integrate with flutter_secure_storage after PIN verification
-  // For now, return null — child must complete PIN flow first
+  // TODO: integrate with flutter_secure_storage to get child ID after PIN verification
+  // For now, returns null — child must complete PIN flow first
   return null;
 });
 
@@ -23,9 +24,10 @@ final screenTimeRemainingProvider =
   final repository = ref.watch(screenTimeRepositoryProvider);
   final (daily, _) = await repository.getDailyScreenTime(childId, DateTime.now());
 
-  final restrictions = await ref.watch(appRestrictionsProvider(childId).future);
-  final limit = restrictions.isNotEmpty
-      ? (restrictions.first.scheduleLimits['daily_limit'] as int? ?? 120)
+  final repository2 = ref.watch(appRestrictionRepositoryProvider);
+  final (restrictions, _) = await repository2.getRestrictions(childId);
+  final limit = restrictions?.isNotEmpty == true
+      ? (restrictions!.first.scheduleLimits['daily_limit'] as int? ?? 120)
       : 120;
 
   return (limit - (daily?.totalMinutes ?? 0)).clamp(0, limit);
@@ -43,26 +45,25 @@ final activeScheduleProvider =
   final m = now.minute.toString().padLeft(2, '0');
   final currentTime = '$h:$m';
 
-  try {
-    return schedules?.firstWhere(
-      (s) =>
-          s.dayOfWeek == today &&
-          s.isEnabled &&
-          currentTime.compareTo(s.startTime) >= 0 &&
-          currentTime.compareTo(s.endTime) <= 0,
-    );
-  } catch (_) {
-    return null;
+  if (schedules == null) return null;
+  for (final s in schedules) {
+    if (s.dayOfWeek == today &&
+        s.isEnabled &&
+        currentTime.compareTo(s.startTime) >= 0 &&
+        currentTime.compareTo(s.endTime) <= 0) {
+      return s;
+    }
   }
+  return null;
 });
 
 /// App restriction repository provider (child app)
 final appRestrictionRepositoryProvider =
     Provider<IAppRestrictionRepository>((ref) {
-  return AppRestrictionRepositoryImpl(SupabaseService.client);
+  return AppRestrictionRepositoryImpl();
 });
 
 /// Screen time repository provider (child app)
 final screenTimeRepositoryProvider = Provider<IScreenTimeRepository>((ref) {
-  return ScreenTimeRepositoryImpl(SupabaseService.client);
+  return ScreenTimeRepositoryImpl();
 });

@@ -1,9 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:growly_core/growly_core.dart';
+import '../../launcher/providers/launcher_providers.dart';
 
 /// All earned badges for current child
 final badgesProvider = FutureProvider<List<Badge>>((ref) async {
-  final child = await ref.read(currentChildProvider.future);
+  final child = ref.read(currentChildProvider).valueOrNull;
   if (child == null) return [];
   final repository = ref.watch(badgeRepositoryProvider);
   final (badges, _) = await repository.getBadges(child.id);
@@ -12,28 +13,13 @@ final badgesProvider = FutureProvider<List<Badge>>((ref) async {
 
 /// Reward system (stars, streaks) for current child
 final rewardSystemProvider = FutureProvider<RewardSystem>((ref) async {
-  final child = await ref.read(currentChildProvider.future);
+  final child = ref.read(currentChildProvider).valueOrNull;
   if (child == null) {
-    return RewardSystem(
-      childId: '',
-      currentStreak: 0,
-      longestStreak: 0,
-      totalStars: 0,
-      unlockedBadges: const [],
-      createdAt: DateTime.now(),
-    );
+    return RewardSystem(childId: '');
   }
   final repository = ref.watch(badgeRepositoryProvider);
   final (reward, _) = await repository.getRewardSystem(child.id);
-  return reward ??
-      RewardSystem(
-        childId: child.id,
-        currentStreak: 0,
-        longestStreak: 0,
-        totalStars: 0,
-        unlockedBadges: const [],
-        createdAt: DateTime.now(),
-      );
+  return reward ?? RewardSystem(childId: child.id);
 });
 
 /// All possible badges catalog (for locked badge display)
@@ -51,5 +37,5 @@ final allBadgesCatalogProvider =
 
 /// Badge repository provider (child app)
 final badgeRepositoryProvider = Provider<IBadgeRepository>((ref) {
-  return BadgeRepositoryImpl(SupabaseService.client);
+  return BadgeRepositoryImpl();
 });

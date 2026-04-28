@@ -60,7 +60,10 @@ class AiTutorNotifier extends AsyncNotifier<AiTutorState> {
 
   Future<void> sendMessage(String text, {String mode = 'general'}) async {
     final currentState = state.valueOrNull ?? const AiTutorState();
-    final child = await ref.read(currentChildProvider.future);
+
+    // Get child from currentChildProvider
+    final childAsync = ref.read(currentChildProvider);
+    final child = childAsync.valueOrNull;
     if (child == null) return;
 
     // Add user message immediately
@@ -110,7 +113,7 @@ class AiTutorNotifier extends AsyncNotifier<AiTutorState> {
       );
 
       state = AsyncData(currentState.copyWith(
-        sessionId: response.data['metadata']?['sessionId'] as String?,
+        sessionId: metadata?['sessionId'] as String?,
         messages: [...state.value!.messages, aiMessage],
         isLoading: false,
       ));
@@ -141,16 +144,17 @@ final aiTutorProvider =
 /// Session history from ai_tutor_sessions table
 final aiSessionHistoryProvider =
     FutureProvider<List<Map<String, dynamic>>>((ref) async {
-  final child = await ref.read(currentChildProvider.future);
+  final child = ref.read(currentChildProvider).valueOrNull;
   if (child == null) return [];
 
-  final { data, error } = await SupabaseService.client
+  final result = await SupabaseService.client
       .from('ai_tutor_sessions')
       .select()
       .eq('child_id', child.id)
       .order('created_at', ascending: false)
       .limit(20);
 
-  if (error != null) return [];
-  return List<Map<String, dynamic>>.from(data as List);
+  if (result.error != null) return [];
+  final List<dynamic> data = result.data ?? [];
+  return List<Map<String, dynamic>>.from(data);
 });
