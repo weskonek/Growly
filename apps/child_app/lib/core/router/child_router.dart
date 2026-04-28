@@ -8,10 +8,22 @@ import '../../features/learning/presentation/pages/lesson_page.dart';
 import '../../features/ai_tutor/presentation/pages/ai_tutor_page.dart';
 import '../../features/rewards/presentation/pages/rewards_page.dart';
 
-/// Router provider for child app
+/// Tracks whether the child has been verified via PIN gate
+/// Exposed so child_launcher_page.dart can write to it after PIN verification
+final verifiedChildIdProvider = StateProvider<String?>((ref) => null);
+
+/// Router provider for child app with PIN gate protection
 final childRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/launcher',
+    redirect: (context, state) {
+      if (state.matchedLocation == '/launcher') return null;
+
+      final verifiedId = ref.read(verifiedChildIdProvider);
+      if (verifiedId == null) return '/launcher';
+
+      return null;
+    },
     routes: [
       GoRoute(
         path: '/launcher',

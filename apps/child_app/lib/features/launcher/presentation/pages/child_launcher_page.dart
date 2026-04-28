@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:growly_core/growly_core.dart' hide currentChildProvider;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:child_app/features/launcher/providers/launcher_providers.dart';
+import 'package:child_app/core/router/child_router.dart';
 
 class ChildLauncherPage extends ConsumerStatefulWidget {
   const ChildLauncherPage({super.key});
@@ -13,7 +14,6 @@ class ChildLauncherPage extends ConsumerStatefulWidget {
 }
 
 class _ChildLauncherPageState extends ConsumerState<ChildLauncherPage> {
-  String? _childId;
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +31,6 @@ class _ChildLauncherPageState extends ConsumerState<ChildLauncherPage> {
             data: (child) {
               if (child == null) {
                 return _PinGate(onVerified: (childId) {
-                  setState(() => _childId = childId);
                   ref.invalidate(currentChildProvider);
                 });
               }
@@ -44,16 +43,16 @@ class _ChildLauncherPageState extends ConsumerState<ChildLauncherPage> {
   }
 }
 
-class _PinGate extends StatefulWidget {
+class _PinGate extends ConsumerStatefulWidget {
   final void Function(String childId) onVerified;
 
   const _PinGate({required this.onVerified});
 
   @override
-  State<_PinGate> createState() => _PinGateState();
+  ConsumerState<_PinGate> createState() => _PinGateState();
 }
 
-class _PinGateState extends State<_PinGate> {
+class _PinGateState extends ConsumerState<_PinGate> {
   final _controller = TextEditingController();
   bool _isLoading = false;
   String? _error;
@@ -129,6 +128,7 @@ class _PinGateState extends State<_PinGate> {
       }
 
       if (matchedChild != null && mounted) {
+        ref.read(verifiedChildIdProvider.notifier).state = matchedChild['id'] as String;
         widget.onVerified(matchedChild['id'] as String);
       } else if (mounted) {
         setState(() => _error = 'PIN salah. Coba lagi ya!');

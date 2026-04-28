@@ -144,7 +144,13 @@ async function callGemini(apiKey: string, systemPrompt: string, userPrompt: stri
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       contents: [{ role: 'user', parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }],
-      generationConfig: { temperature: 0.8, maxOutputTokens: 1024 }
+      generationConfig: { temperature: 0.8, maxOutputTokens: 1024 },
+      safetySettings: [
+        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_LOW_AND_ABOVE' },
+        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_LOW_AND_ABOVE' },
+        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_LOW_AND_ABOVE' },
+        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_LOW_AND_ABOVE' },
+      ]
     })
   })
 
@@ -155,9 +161,12 @@ async function callGemini(apiKey: string, systemPrompt: string, userPrompt: stri
   const data = await response.json()
   const content = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
 
-  // Estimate tokens (rough: ~4 chars per token for Indonesian)
-  const tokensUsed = Math.ceil((systemPrompt.length + userPrompt.length) / 4) +
-                     Math.ceil(content.length / 4)
+  // Use actual token counts from API response if available
+  const usage = data.usageMetadata
+  const tokensUsed = usage
+    ? (usage.promptTokenCount ?? 0) + (usage.candidatesTokenCount ?? 0)
+    : Math.ceil((systemPrompt.length + userPrompt.length) / 4) +
+      Math.ceil(content.length / 4)
 
   return { content, tokensUsed }
 }
@@ -199,6 +208,21 @@ serve(async (req) => {
 
     if (error || !child) {
       return new Response(JSON.stringify({ error: 'Child not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    // Rate limit: max 20 requests per child per hour
+    const oneHourAgo = new Date(Date.now() - 3600000).toISOString()
+    const { count } = await supabase
+      .from('ai_tutor_sessions')
+      .select('id', { count: 'exact', head: true })
+      .eq('child_id', childId)
+      .gte('created_at', oneHourAgo)
+
+    if ((count ?? 0) >= 20) {
+      return new Response(JSON.stringify({
+        error: 'Batas pertanyaan tercapai. Istirahat dulu ya, nanti coba lagi! 🌟',
+        type: 'rate_limited'
+      }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
     const birthDate = new Date(child.birth_date)
