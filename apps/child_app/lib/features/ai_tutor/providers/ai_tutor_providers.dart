@@ -156,3 +156,23 @@ final aiSessionHistoryProvider =
 
   return List<Map<String, dynamic>>.from(data as List);
 });
+
+/// Checks whether the current child's parent has an AI Tutor-enabled subscription.
+/// Returns false for free tier (AI Tutor behind paywall).
+final aiTutorTierGateProvider = FutureProvider<bool>((ref) async {
+  final child = await ref.read(launcher.currentChildProvider.future);
+  if (child == null) return false;
+
+  // Free tier: ai_tutor disabled. Check parent's active subscription.
+  final subscription = await Supabase.instance.client
+      .from('subscriptions')
+      .select('tier')
+      .eq('parent_id', child.parentId)
+      .eq('status', 'active')
+      .maybeSingle();
+
+  if (subscription == null) return false; // no subscription = free tier
+
+  final tier = subscription['tier'] as String? ?? 'free';
+  return tier != 'free';
+});

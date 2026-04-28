@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:growly_core/growly_core.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../providers/child_providers.dart' show selectedChildDetailProvider, updateChildProvider, deleteChildProvider;
 
 class ChildDetailPage extends ConsumerStatefulWidget {
@@ -157,6 +158,12 @@ class _ChildDetailPageState extends ConsumerState<ChildDetailPage> {
           label: const Text('Kelola Kontrol Orang Tua'),
         ),
         const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: () => _showChangePinDialog(child),
+          icon: const Icon(Icons.pin_outlined),
+          label: const Text('Ganti PIN Anak'),
+        ),
+        const SizedBox(height: 12),
         DestructiveButton(
           label: 'Hapus Profil',
           onPressed: () => _confirmDelete(child),
@@ -229,6 +236,71 @@ class _ChildDetailPageState extends ConsumerState<ChildDetailPage> {
         const SnackBar(content: Text('Gagal menghapus profil'), backgroundColor: Colors.red),
       );
     }
+  }
+
+  Future<void> _showChangePinDialog(ChildProfile child) async {
+    final pinController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Ganti PIN'),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: pinController,
+            keyboardType: TextInputType.number,
+            maxLength: 6,
+            obscureText: true,
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: 'PIN Baru (4-6 digit)',
+              counterText: '',
+            ),
+            validator: (v) {
+              if (v == null || v.isEmpty) return 'PIN wajib diisi';
+              if (v.length < 4) return 'PIN minimal 4 digit';
+              if (!RegExp(r'^\d+$').hasMatch(v)) return 'PIN hanya angka';
+              return null;
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) Navigator.pop(ctx, true);
+            },
+            child: const Text('Simpan'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final parentId = Supabase.instance.client.auth.currentUser?.id;
+    if (parentId == null) return;
+
+    final result = await Supabase.instance.client.rpc('set_child_pin', params: {
+      'p_child_id': child.id,
+      'p_pin': pinController.text,
+      'p_parent_id': parentId,
+    });
+
+    if (!mounted) return;
+    final success = result?[0]?['success'] == true || result?['success'] == true;
+    final message = result?[0]?['message'] ?? result?['message'] ?? (success ? 'PIN berhasil diubah' : 'Gagal');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: success ? null : Colors.red,
+      ),
+    );
   }
 }
 

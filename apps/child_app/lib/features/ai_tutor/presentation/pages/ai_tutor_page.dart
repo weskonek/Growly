@@ -35,6 +35,44 @@ class _AiTutorPageState extends ConsumerState<AiTutorPage> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final tierAsync = ref.watch(aiTutorTierGateProvider);
+
+    return tierAsync.when(
+      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (e, _) => Scaffold(
+        appBar: AppBar(title: const Text('AI Tutor')),
+        body: Center(child: Text('Gagal memuat: $e')),
+      ),
+      data: (allowed) {
+        if (!allowed) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('AI Tutor')),
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('🔒', style: TextStyle(fontSize: 64)),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'AI Tutor hanya untuk Premium',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Minta orang tua upgrade ke Premium',
+                    style: TextStyle(color: cs.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        return _buildTutorUi(context, cs);
+      },
+    );
+  }
+
+  Widget _buildTutorUi(BuildContext context, ColorScheme cs) {
     final tutorAsync = ref.watch(aiTutorProvider);
 
     // Welcome message as first AI message

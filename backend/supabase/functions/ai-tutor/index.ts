@@ -8,6 +8,29 @@ const corsHeaders = {
 
 const GEMINI_MODEL = 'gemini-1.5-flash'
 
+// ==================== IP-BASED RATE LIMITER ====================
+// In-memory store: IP → array of request timestamps (last 60 seconds)
+// Resets on every cold start (per-instance), sufficient for MVP anti-abuse
+const ipRequestLog = new Map<string, number[]>()
+const IP_WINDOW_MS = 60_000      // 1 minute
+const IP_MAX_REQUESTS = 10        // max 10 req/min per IP
+
+function checkIpRateLimit(ip: string): boolean {
+  const now = Date.now()
+  const timestamps = ipRequestLog.get(ip) ?? []
+  const recent = timestamps.filter(t => now - t < IP_WINDOW_MS)
+  if (recent.length >= IP_MAX_REQUESTS) return false
+  recent.push(now)
+  ipRequestLog.set(ip, recent)
+  // Cleanup old entries periodically
+  if (ipRequestLog.size > 1000) {
+    for (const [k, v] of ipRequestLog) {
+      ipRequestLog.set(k, v.filter(t => now - t < IP_WINDOW_MS))
+    }
+  }
+  return true
+}
+
 // ==================== SAFETY FILTER ====================
 const BLOCKED_PATTERNS = [
   /violence|pertarungan|pertempuran|membunuh|combat/i,
@@ -175,6 +198,16 @@ async function callGemini(apiKey: string, systemPrompt: string, userPrompt: stri
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
+  }
+
+  // IP-based rate limit (10 req/min per IP)
+  const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    ?? req.headers.get('cf-connecting-ip')
+    ?? 'unknown'
+  if (!checkIpRateLimit(clientIp)) {
+    return new Response(JSON.stringify({
+      error: 'Terlalu banyak permintaan, coba lagi dalam 1 menit 🌟'
+    }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   }
 
   try {
