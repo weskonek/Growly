@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -11,29 +12,19 @@ import '../../features/rewards/presentation/pages/rewards_page.dart';
 /// Tracks whether the child has been verified via PIN gate
 final verifiedChildIdProvider = StateProvider<String?>((ref) => null);
 
-/// Notifier that fires Listenable listeners when verifiedChildIdProvider changes.
-/// GoRouter uses this to re-evaluate redirects reactively.
-class _VerifiedIdNotifier extends StateNotifier<String?> implements Listenable {
-  _VerifiedIdNotifier(WidgetRef ref)
-      : super(ref.watch(verifiedChildIdProvider)) {
-    ref.listen(verifiedChildIdProvider, (_, next) {
-      state = next;
-      for (final listener in _listeners) {
-        listener();
-      }
+/// Bridges Riverpod StateProvider to go_router's refreshListenable.
+/// Router rebuilds redirect when verifiedChildIdProvider changes.
+class _VerifiedIdNotifier extends ChangeNotifier {
+  _VerifiedIdNotifier(this._ref) {
+    _ref.listen(verifiedChildIdProvider, (_, __) {
+      notifyListeners();
     });
   }
 
-  final _listeners = <VoidCallback>[];
-
-  @override
-  void addListener(VoidCallback listener) => _listeners.add(listener);
-  @override
-  void removeListener(VoidCallback listener) => _listeners.remove(listener);
+  final WidgetRef _ref;
 }
 
 /// Router provider for child app with PIN gate protection.
-/// Uses refreshListenable so redirect re-evaluates when verifiedChildIdProvider changes.
 final childRouterProvider = Provider<GoRouter>((ref) {
   final notifier = _VerifiedIdNotifier(ref);
 
