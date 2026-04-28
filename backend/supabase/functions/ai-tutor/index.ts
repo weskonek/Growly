@@ -248,6 +248,22 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Child not found or access denied' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
+    // Enforce subscription tier — block free tier from AI tutor
+    const { data: subscription } = await supabase
+      .from('subscriptions')
+      .select('tier, status')
+      .eq('parent_id', user.id)
+      .eq('status', 'active')
+      .maybeSingle()
+
+    const tier = subscription?.tier as string | undefined
+    if (tier === 'free' || tier === undefined) {
+      return new Response(JSON.stringify({
+        error: 'AI Tutor hanya untuk paket Premium. Upgrade di menu Pengaturan! 🌟',
+        type: 'tier_blocked'
+      }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
     // Rate limit: max 20 requests per child per hour
     const oneHourAgo = new Date(Date.now() - 3600000).toISOString()
     const { count } = await supabase

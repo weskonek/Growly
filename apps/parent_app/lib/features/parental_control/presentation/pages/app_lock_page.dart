@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:growly_core/growly_core.dart';
+import 'package:uuid/uuid.dart';
 
 class AppLockPage extends ConsumerStatefulWidget {
   final String childId;
@@ -122,7 +123,7 @@ class _AppLockPageState extends ConsumerState<AppLockPage> {
   Future<void> _addRestriction(String appName, String appPackage) async {
     final repo = ref.read(_appRestrictionRepoProvider);
     // Generate a stable client-side ID (upsert will use this)
-    final id = '${widget.childId}_${appPackage.hashCode.abs()}';
+    final id = '${widget.childId}_${const Uuid().v4()}';
     final restriction = AppRestriction(
       id: id,
       childId: widget.childId,
