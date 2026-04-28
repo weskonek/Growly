@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/launcher/presentation/pages/child_launcher_page.dart';
 import '../../features/learning/presentation/pages/learning_hub_page.dart';
+import '../../features/learning/presentation/pages/subject_detail_page.dart';
+import '../../features/learning/presentation/pages/lesson_page.dart';
 import '../../features/ai_tutor/presentation/pages/ai_tutor_page.dart';
 import '../../features/rewards/presentation/pages/rewards_page.dart';
 
@@ -20,6 +22,25 @@ final childRouterProvider = Provider<GoRouter>((ref) {
         path: '/learning',
         name: 'learning',
         builder: (context, state) => const LearningHubPage(),
+        routes: [
+          GoRoute(
+            path: 'subject/:subjectId',
+            name: 'subject-detail',
+            builder: (context, state) => SubjectDetailPage(
+              subjectId: state.pathParameters['subjectId']!,
+            ),
+            routes: [
+              GoRoute(
+                path: 'lesson/:lessonId',
+                name: 'lesson',
+                builder: (context, state) => LessonPage(
+                  subjectId: state.pathParameters['subjectId']!,
+                  lessonId: state.pathParameters['lessonId']!,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
       GoRoute(
         path: '/ai-tutor',

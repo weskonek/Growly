@@ -1,11 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:child_app/features/rewards/providers/rewards_providers.dart';
 
-class RewardsPage extends StatelessWidget {
+class RewardsPage extends ConsumerWidget {
   const RewardsPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final rewardAsync = ref.watch(rewardSystemProvider);
+    final badgesAsync = ref.watch(badgesProvider);
+    final catalog = ref.watch(allBadgesCatalogProvider);
+
+    ref.listen(badgesProvider, (prev, next) {
+      final prevBadges = prev?.valueOrNull ?? [];
+      final nextBadges = next?.valueOrNull ?? [];
+      if (prevBadges.length < nextBadges.length) {
+        _showCelebration(context);
+      }
+    });
+
+    final reward = rewardAsync.valueOrNull;
+    final streak = reward?.currentStreak ?? 0;
+    final stars = reward?.totalStars ?? 0;
+    final unlockedIds = (badgesAsync.valueOrNull ?? []).map((b) => b.name).toSet();
+
     return Scaffold(
       appBar: AppBar(title: const Text('🏆 Hadiah & Badge')),
       body: ListView(
@@ -23,42 +41,100 @@ class RewardsPage extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Streak Belajar',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w700)),
-                      Text('5 hari berturut-turut!',
-                          style: TextStyle(
-                              color: Colors.orange.shade700,
-                              fontWeight: FontWeight.w600)),
+                      Text(
+                        'Streak Belajar',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                      Text(
+                        '$streak hari berturut-turut!',
+                        style: TextStyle(color: Colors.orange.shade700, fontWeight: FontWeight.w600),
+                      ),
                     ],
                   ),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          Text('Badge Kamu',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 12),
-          GridView.count(
-            crossAxisCount: 3,
+          // Stars total
+          Card(
+            color: Colors.amber.shade50,
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  const Text('⭐', style: TextStyle(fontSize: 48)),
+                  const SizedBox(width: 16),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Total Bintang',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                      Text(
+                        '$stars bintang dikumpulkan!',
+                        style: TextStyle(color: Colors.amber.shade700, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Badge Kamu',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 12),
+          GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            children: const [
-              _BadgeCard(emoji: '⭐', label: 'Bintang Pertama', unlocked: true),
-              _BadgeCard(emoji: '📚', label: 'Pembaca Hebat', unlocked: true),
-              _BadgeCard(emoji: '🔢', label: 'Ahli Hitung', unlocked: true),
-              _BadgeCard(emoji: '🌍', label: 'Ilmuwan Kecil', unlocked: false),
-              _BadgeCard(emoji: '🎨', label: 'Seniman Muda', unlocked: false),
-              _BadgeCard(emoji: '🚀', label: 'Explorer', unlocked: false),
-            ],
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+            ),
+            itemCount: catalog.length,
+            itemBuilder: (context, i) {
+              final badge = catalog[i];
+              final unlocked = unlockedIds.contains(badge['name']);
+              return _BadgeCard(
+                emoji: badge['emoji'] as String,
+                label: badge['name'] as String,
+                unlocked: unlocked,
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showCelebration(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('🎉', style: TextStyle(fontSize: 72)),
+            const SizedBox(height: 16),
+            Text(
+              'Badge Baru Diraih!',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Yeay!'),
           ),
         ],
       ),
@@ -69,8 +145,7 @@ class RewardsPage extends StatelessWidget {
 class _BadgeCard extends StatelessWidget {
   final String emoji, label;
   final bool unlocked;
-  const _BadgeCard(
-      {required this.emoji, required this.label, required this.unlocked});
+  const _BadgeCard({required this.emoji, required this.label, required this.unlocked});
 
   @override
   Widget build(BuildContext context) {
@@ -86,10 +161,11 @@ class _BadgeCard extends StatelessWidget {
           children: [
             Text(emoji, style: const TextStyle(fontSize: 36)),
             const SizedBox(height: 4),
-            Text(label,
-                style:
-                    const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                textAlign: TextAlign.center),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),

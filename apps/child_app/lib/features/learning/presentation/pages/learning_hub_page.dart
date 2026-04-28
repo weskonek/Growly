@@ -1,20 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:child_app/features/learning/providers/learning_providers.dart';
 
-class LearningHubPage extends StatelessWidget {
+class LearningHubPage extends ConsumerWidget {
   const LearningHubPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final subjectsAsync = ref.watch(subjectsProvider);
+
     return Scaffold(
       appBar: AppBar(title: const Text('📚 Belajar')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: const [
-          _SubjectCard(emoji: '🔢', title: 'Matematika', subtitle: 'Berhitung seru!', level: 'Level 3'),
-          _SubjectCard(emoji: '📖', title: 'Membaca', subtitle: 'Baca cerita bersama', level: 'Level 2'),
-          _SubjectCard(emoji: '🌍', title: 'Sains', subtitle: 'Kenali dunia sekitar', level: 'Level 1'),
-          _SubjectCard(emoji: '🎨', title: 'Kreativitas', subtitle: 'Gambar & mewarnai', level: 'Level 4'),
-        ],
+      body: subjectsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error: $e')),
+        data: (subjects) => ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: subjects.length,
+          itemBuilder: (context, i) {
+            final s = subjects[i];
+            return _SubjectCard(
+              emoji: s['emoji'] as String,
+              title: s['title'] as String,
+              subtitle: s['subtitle'] as String,
+              level: 'Level ${(i + 1)}',
+              onTap: () => context.go('/learning/subject/${s['id']}'),
+            );
+          },
+        ),
       ),
     );
   }
@@ -22,7 +36,15 @@ class LearningHubPage extends StatelessWidget {
 
 class _SubjectCard extends StatelessWidget {
   final String emoji, title, subtitle, level;
-  const _SubjectCard({required this.emoji, required this.title, required this.subtitle, required this.level});
+  final VoidCallback onTap;
+
+  const _SubjectCard({
+    required this.emoji,
+    required this.title,
+    required this.subtitle,
+    required this.level,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -39,14 +61,14 @@ class _SubjectCard extends StatelessWidget {
             Text(subtitle),
             const SizedBox(height: 8),
             LinearProgressIndicator(
-              value: 0.6,
+              value: 0.0,
               borderRadius: BorderRadius.circular(4),
               color: cs.primary,
             ),
           ],
         ),
         trailing: Chip(label: Text(level, style: const TextStyle(fontWeight: FontWeight.w700))),
-        onTap: () {},
+        onTap: onTap,
       ),
     );
   }
