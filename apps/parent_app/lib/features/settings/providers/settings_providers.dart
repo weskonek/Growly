@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:growly_core/growly_core.dart';
 
 /// Parent profile provider
 final parentProfileProvider =
@@ -8,14 +7,16 @@ final parentProfileProvider =
   final user = Supabase.instance.client.auth.currentUser;
   if (user == null) throw Exception('Not authenticated');
 
-  final result = await Supabase.instance.client
-      .from('parent_profiles')
-      .select()
-      .eq('id', user.id)
-      .single();
-
-  if (result.error != null) throw Exception(result.error!.message);
-  return Map<String, dynamic>.from(result.data as Map<String, dynamic>);
+  try {
+    final data = await Supabase.instance.client
+        .from('parent_profiles')
+        .select()
+        .eq('id', user.id)
+        .single();
+    return Map<String, dynamic>.from(data as Map);
+  } catch (e) {
+    throw Exception('Failed to load profile: $e');
+  }
 });
 
 /// Update parent profile notifier
@@ -23,7 +24,14 @@ class UpdateParentProfileNotifier
     extends AsyncNotifier<Map<String, dynamic>> {
   @override
   Future<Map<String, dynamic>> build() async {
-    return ref.watch(parentProfileProvider.future);
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) throw Exception('Not authenticated');
+    final data = await Supabase.instance.client
+        .from('parent_profiles')
+        .select()
+        .eq('id', user.id)
+        .single();
+    return Map<String, dynamic>.from(data as Map);
   }
 
   Future<void> updateProfile({
@@ -33,7 +41,7 @@ class UpdateParentProfileNotifier
     bool? pinEnabled,
   }) async {
     state = const AsyncLoading();
-    final user = SupabaseService.client.auth.currentUser;
+    final user = Supabase.instance.client.auth.currentUser;
     if (user == null) {
       state = AsyncError('Not authenticated', StackTrace.current);
       return;
@@ -46,20 +54,38 @@ class UpdateParentProfileNotifier
     if (phone != null) updates['phone'] = phone;
     if (avatarUrl != null) updates['avatar_url'] = avatarUrl;
     if (pinEnabled != null) {
-      final current = (await ref.read(parentProfileProvider.future))['settings'] as Map? ?? {};
-      updates['settings'] = {...current, 'pin_enabled': pinEnabled};
+      try {
+        final currentData = await Supabase.instance.client
+            .from('parent_profiles')
+            .select('settings')
+            .eq('id', user.id)
+            .single();
+        final current = (currentData as Map)['settings'] as Map? ?? {};
+        updates['settings'] = {...current, 'pin_enabled': pinEnabled};
+      } catch (_) {
+        updates['settings'] = {'pin_enabled': pinEnabled};
+      }
     }
 
-    final result = await SupabaseService.client
-        .from('parent_profiles')
-        .update(updates)
-        .eq('id', user.id);
+    try {
+      await Supabase.instance.client
+          .from('parent_profiles')
+          .update(updates)
+          .eq('id', user.id);
 
-    if (result.error != null) {
-      state = AsyncError(result.error!.message, StackTrace.current);
-    } else {
-      state = await ref.read(parentProfileProvider.future);
+      final updatedData = await Supabase.instance.client
+          .from('parent_profiles')
+          .select()
+          .eq('id', user.id)
+          .single();
+      state = AsyncData(Map<String, dynamic>.from(updatedData as Map));
+    } catch (e) {
+      state = AsyncError(e.toString(), StackTrace.current);
     }
+  }
+
+  Future<void> signOut() async {
+    await Supabase.instance.client.auth.signOut();
   }
 }
 
