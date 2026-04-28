@@ -147,4 +147,19 @@ class LearningRepositoryImpl implements ILearningRepository {
       return (null, DatabaseFailure(message: e.toString()));
     }
   }
+
+  @override
+  Future<(Map<String, dynamic>?, Failure?)> getLesson(String lessonId) async {
+    try {
+      final response = await _client
+          .from('lessons')
+          .select()
+          .eq('id', lessonId)
+          .maybeSingle();
+
+      return (response, null);
+    } catch (e) {
+      return (null, DatabaseFailure(message: e.toString()));
+    }
+  }
 }

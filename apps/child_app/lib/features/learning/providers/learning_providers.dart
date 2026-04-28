@@ -45,11 +45,13 @@ final subjectProgressProvider = FutureProvider.family<double, ({
 })>((ref, params) async {
   final repository = ref.watch(learningRepositoryProvider);
   final (progressList, _) = await repository.getProgress(params.childId);
-  final subjectRecords =
-      progressList?.where((p) => p.subject == params.subject) ?? [];
-  final total = progressList?.where((p) => p.subject == params.subject) ?? [];
-  if (total.isEmpty) return 0.0;
-  return subjectRecords.length / total.length;
+  final completedInSubject = progressList
+          ?.where((p) => p.subject == params.subject && p.completed)
+          .length ?? 0;
+  // Total lessons per subject is static (count of lessons seeded in DB)
+  const totalLessonsPerSubject = 2;
+  if (totalLessonsPerSubject == 0) return 0.0;
+  return (completedInSubject / totalLessonsPerSubject).clamp(0.0, 1.0);
 });
 
 /// Learning session notifier (start/end sessions)

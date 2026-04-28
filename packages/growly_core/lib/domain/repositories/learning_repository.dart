@@ -8,4 +8,5 @@ abstract class ILearningRepository {
   Future<(LearningSession?, Failure?)> startSession(String childId, String subject);
   Future<(LearningSession?, Failure?)> endSession(String sessionId, {int durationMinutes = 0, List<String>? topicsCovered});
   Future<(Map<String, dynamic>?, Failure?)> getStats(String childId);
+  Future<(Map<String, dynamic>?, Failure?)> getLesson(String lessonId);
 }

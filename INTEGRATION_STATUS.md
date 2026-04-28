@@ -1,6 +1,6 @@
 # Growly Integration Status
 
-> Last audited: 2026-04-29 (2nd pass)
+> Last audited: 2026-04-29 (4th pass)
 > Audited by: Claude Code
 > Scope: parent_app (Flutter), child_app (Flutter), admin_web (Next.js), growly_core (package), backend/supabase (migrations + edge functions)
 
@@ -40,7 +40,7 @@
 |---|---|---|
 | App lock page | ✅ | Lists app restrictions, toggle switch updates DB |
 | Add app restriction | ✅ | `_addRestriction` saves via `AppRestrictionRepositoryImpl` |
-| Screen time config | ⚠️ | `screenTimeRepository` exists but page may be incomplete |
+| Screen time config | ✅ | ScreenTimePage loads from DB via `getRestrictions`, persists via `saveRestriction` upsert |
 
 ### 1.5 Settings
 | Item | Status | Notes |
@@ -69,25 +69,31 @@
 |---|---|---|
 | Subject grid | ✅ | 5 subjects (reading, math, science, creative, language) |
 | Subject detail page | ✅ | Shows lessons list |
-| Lesson page | ✅ | Lesson content displayed |
-| Progress tracking | ⚠️ | Static/static data — no live DB updates |
+| Lesson page | ✅ | Content loaded from `lessons` table via `getLesson()` |
+| Progress tracking | ✅ | `subjectProgressProvider` counts completed lessons vs total per subject |
+| Session tracking | ✅ | `startSession`/`endSession` via `Future.microtask` in dispose |
+| Lesson completion rewards | ✅ | Atomic `completeLesson` RPC — streak + stars in single transaction, idempotent per lesson |
 
 ### 2.3 AI Tutor
 | Item | Status | Notes |
 |---|---|---|
 | Chat interface | ✅ | `AiTutorPage` with message history |
 | Edge function call | ✅ | POSTs to `/functions/v1/ai-tutor` |
-| Safety filter | ✅ | `safe_mode` strips unsafe content |
-| Rate limiting | ✅ | 20 msg/session via `rate_limit_state` column |
+| Safety filter | ✅ | `SafetyFilter` class properly instantiated and used in edge function |
+| Rate limiting | ✅ | 20 msg/child/hour + IP-based 10 req/min in edge function |
+| Tier gate enforcement | ✅ | Free-tier parents blocked with 403 + tier_blocked response |
 | Flagged sessions | ✅ | Sessions flagged on unsafe detection |
 | Session persistence | ⚠️ | `ai_tutor_sessions` + `ai_tutor_messages` tables exist |
+| Tier gate UI | ✅ | Paywall screen shown when `aiTutorTierGateProvider` returns false |
 
 ### 2.4 Rewards
 | Item | Status | Notes |
 |---|---|---|
 | Badge list | ✅ | Fetches from `badges` table via `BadgeRepositoryImpl` |
-| Badge display | ✅ | Shows earned badges with icons |
-| Streak display | ⚠️ | Static UI — streak logic may not be connected to DB |
+| Badge display | ✅ | Earned badges shown with icons; locked badges in catalog |
+| Badge unlock stable ID | ✅ | Uses `BadgeType.index` (int) instead of name string |
+| Celebration dialog | ✅ | Triggers on specific new badge type via `ref.invalidate(badgesProvider)` |
+| `badgesProvider` reactivity | ✅ | Uses `ref.watch` — rebuilds when `currentChildProvider` changes |
 
 ### 2.5 Profile
 | Item | Status | Notes |
@@ -223,14 +229,18 @@
 | `canAddChildProvider` | ✅ | Gates AddChildPage — shows upgrade banner at limit |
 | `tierGateProvider` | ✅ | Family provider for feature-level tier checks |
 | Tier enforcement in child app | ✅ | `aiTutorTierGateProvider` checks subscription tier, shows paywall screen |
+| Tier enforcement in edge function | ✅ | Free tier blocked with 403 before processing any request |
 | RLS on subscriptions | ✅ | Parents can only view their own subscription |
 
 ### 4.6 Edge Function Security
 | Item | Status | Notes |
 |---|---|---|
+| `ai-tutor` validates JWT | ✅ | `supabase.auth.getUser()` decodes Bearer token |
 | `ai-tutor` validates child ownership | ✅ | Checks `parent_id` from `child_profiles` |
+| `ai-tutor` enforces tier gate | ✅ | Blocks `free` tier with 403 + tier_blocked type |
+| IP-based rate limiting | ✅ | In-memory 10 req/min per IP |
 | Uses service role key | ✅ | Inserts with `service_role` client |
-| Rate limiting per child | ✅ | `rate_limit_state` column checked before insert |
+| Rate limiting per child | ✅ | Max 20 sessions/child/hour |
 
 ---
 
@@ -282,10 +292,10 @@
 | Item | Status | Notes |
 |---|---|---|
 | PIN never stored in plaintext | ✅ | bcrypt via `pgcrypto` |
-| PIN hash never sent to client | ✅ | Child app fetches `pin_hash` but RPC verifies |
-| PIN hash fetch to client | ✅ | Child app only selects `id, name` — `pin_hash` never sent to client |
+| PIN hash never sent to client | ✅ | Child app only selects `id, name` — `pin_hash` never fetched |
 | PIN plaintext fallback | ✅ | Removed — verification always via `verify_child_pin` RPC |
 | `hash_pin` helper function | ✅ | `gen_salt('bf', 10)` with validation |
+| Router reactive redirect | ✅ | `childRouterProvider` uses `ProviderContainer` + `_VerifiedIdNotifier` (ChangeNotifier) |
 
 ### 5.7 COPPA Compliance
 | Item | Status | Notes |
@@ -299,16 +309,18 @@
 | Item | Status | Notes |
 |---|---|---|
 | Per-IP rate limit AI tutor | ✅ | 10 req/min via in-memory `ipRequestLog` in ai-tutor edge function |
-| AI tutor per-session limit | ✅ | 20 requests/child/hour via `ai_tutor_sessions` count in edge function |
-| PIN verification | ✅ | Max 5 failed attempts/15 min via `pin_attempt_log` + migration 0010 |
+| AI tutor per-child limit | ✅ | 20 sessions/child/hour via `ai_tutor_sessions` count in edge function |
+| PIN verification rate limit | ✅ | Max 5 failed attempts/15 min via `pin_attempt_log` + migration 0010 |
 
 ---
 
 ## KNOWN GAPS & ACTION ITEMS
 
-| Priority | Item | Files |
-|---|---|---|
-| 🟢 Low | Complete content management page | `admin_web/src/app/dashboard/content/` |
+| Priority | Item | Files | Status |
+|---|---|---|---|
+| 🟢 Low | Complete content management page | `admin_web/src/app/dashboard/content/` | Pending |
+| 🟡 Medium | DB-level child limit enforcement | `child_profiles` trigger | Pre-launch |
+| 🟡 Medium | Reward streak reset on day boundary | `complete_lesson_reward` RPC | Pre-launch |
 
 ---
 
@@ -318,5 +330,7 @@
 |---|---|---|
 | 00001 | ✅ | Likely initial schema |
 | 00002–00008 | ✅ | Prior migrations |
-| 00009_user_management.sql | ✅ | Applied 2026-04-29. RLS, PIN helpers, triggers, indexes |
-| 0010_pin_rate_limit.sql | ✅ | Applied 2026-04-29. PIN brute-force rate limiting, `pin_attempt_log` table |
+| 00009_user_management.sql | ✅ | RLS, PIN helpers, triggers, indexes |
+| 0010_pin_rate_limit.sql | ✅ | PIN brute-force rate limiting, `pin_attempt_log` table |
+| 0011_learning_lessons.sql | ✅ | `lessons` table with seeded content per subject |
+| 0012_atomic_reward_update.sql | ✅ | `complete_lesson_reward` RPC for atomic streak+stars |

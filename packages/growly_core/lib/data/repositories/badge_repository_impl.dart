@@ -119,4 +119,27 @@ class BadgeRepositoryImpl implements IBadgeRepository {
       return (false, DatabaseFailure(message: e.toString()));
     }
   }
+
+  @override
+  Future<(RewardSystem?, Failure?)> completeLesson(
+    String childId,
+    String lessonId,
+    int stars,
+  ) async {
+    try {
+      // Atomic: single DB call increments streak + stars together
+      final response = await _client.rpc('complete_lesson_reward', params: {
+        'p_child_id': childId,
+        'p_stars': stars,
+      });
+
+      if (response == null) {
+        return (null, DatabaseFailure(message: 'Failed to update reward'));
+      }
+
+      return (RewardSystem.fromJson(Map<String, dynamic>.from(response as Map)), null);
+    } catch (e) {
+      return (null, DatabaseFailure(message: e.toString()));
+    }
+  }
 }

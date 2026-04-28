@@ -123,7 +123,7 @@ class _AppLockPageState extends ConsumerState<AppLockPage> {
   Future<void> _addRestriction(String appName, String appPackage) async {
     final repo = ref.read(_appRestrictionRepoProvider);
     // Generate a stable client-side ID (upsert will use this)
-    final id = '${widget.childId}_${const Uuid().v4()}';
+    final id = '${widget.childId}_${const Uuid().v5('6ba7b810-9dad-11d1-80b4-00c04fd430c8', appPackage)}';
     final restriction = AppRestriction(
       id: id,
       childId: widget.childId,

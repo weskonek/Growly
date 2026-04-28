@@ -287,8 +287,10 @@ serve(async (req) => {
     let aiContent: string
     let responseTime: number
     let tokensUsed = 0
-    let shouldFlag = isInputUnsafe || flagReason !== null
-    let finalFlagReason: string | null = flagReason
+    const inputFlagReason = safetyFilter.getFlagReason(question)
+    const isInputUnsafe = !safetyFilter.isSafe(question)
+    let shouldFlag = isInputUnsafe
+    let finalFlagReason: string | null = inputFlagReason
 
     if (isInputUnsafe) {
       // Log unsafe input immediately

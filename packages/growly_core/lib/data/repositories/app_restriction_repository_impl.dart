@@ -91,6 +91,42 @@ class AppRestrictionRepositoryImpl implements IAppRestrictionRepository {
   }
 
   @override
+  Future<(Schedule?, Failure?)> updateSchedule(Schedule schedule) async {
+    try {
+      final json = Map<String, dynamic>.from(schedule.toJson());
+      json.remove('created_at');
+
+      final response = await _client
+          .from('schedules')
+          .update(json)
+          .eq('id', schedule.id)
+          .select()
+          .single();
+
+      return (Schedule.fromJson(Map<String, dynamic>.from(response)), null);
+    } catch (e) {
+      return (null, DatabaseFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<(Schedule?, Failure?)> createSchedule(Schedule schedule) async {
+    try {
+      final json = schedule.toJson();
+
+      final response = await _client
+          .from('schedules')
+          .insert(json)
+          .select()
+          .single();
+
+      return (Schedule.fromJson(Map<String, dynamic>.from(response)), null);
+    } catch (e) {
+      return (null, DatabaseFailure(message: e.toString()));
+    }
+  }
+
+  @override
   Future<(bool, Failure?)> deleteSchedule(String scheduleId) async {
     try {
       await _client.from('schedules').delete().eq('id', scheduleId);

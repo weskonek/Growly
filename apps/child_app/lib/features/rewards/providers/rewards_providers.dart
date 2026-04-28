@@ -4,7 +4,7 @@ import '../../launcher/providers/launcher_providers.dart' as launcher;
 
 /// All earned badges for current child
 final badgesProvider = FutureProvider<List<Badge>>((ref) async {
-  final child = await ref.read(launcher.currentChildProvider.future);
+  final child = await ref.watch(launcher.currentChildProvider.future);
   if (child == null) return [];
   final repository = ref.watch(badgeRepositoryProvider);
   final (badges, _) = await repository.getBadges(child.id);
@@ -13,7 +13,7 @@ final badgesProvider = FutureProvider<List<Badge>>((ref) async {
 
 /// Reward system (stars, streaks) for current child
 final rewardSystemProvider = FutureProvider<RewardSystem>((ref) async {
-  final child = await ref.read(launcher.currentChildProvider.future);
+  final child = await ref.watch(launcher.currentChildProvider.future);
   if (child == null) {
     return const RewardSystem(childId: '');
   }

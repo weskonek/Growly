@@ -43,8 +43,11 @@ final screenTimeRemainingProvider =
   final repository2 = ref.watch(appRestrictionRepositoryProvider);
   final (restrictions, _) = await repository2.getRestrictions(childId);
   final allRestrictions = restrictions ?? [];
-  final limit = allRestrictions.isNotEmpty
-      ? (allRestrictions.first.scheduleLimits['daily_limit'] ?? 120)
+  // Use the most recently updated restriction for the daily limit
+  final sorted = [...allRestrictions]..sort((a, b) =>
+      (b.updatedAt ?? DateTime(1970)).compareTo(a.updatedAt ?? DateTime(1970)));
+  final limit = sorted.isNotEmpty
+      ? (sorted.first.scheduleLimits['daily_limit'] ?? 120)
       : 120;
 
   return (limit - (daily?.totalMinutes ?? 0)).clamp(0, limit);

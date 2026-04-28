@@ -19,7 +19,7 @@ class _SchoolModePageState extends ConsumerState<SchoolModePage> {
     return Scaffold(
       appBar: AppBar(title: const Text('Mode Sekolah')),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddScheduleSheet(context),
+        onPressed: () => _showScheduleSheet(context),
         child: const Icon(Icons.add),
       ),
       body: schedulesAsync.when(
@@ -49,7 +49,7 @@ class _SchoolModePageState extends ConsumerState<SchoolModePage> {
                     value: s.isEnabled,
                     onChanged: (v) => _toggleSchedule(s, v),
                   ),
-                  onTap: () => _showEditScheduleSheet(context, s),
+                  onTap: () => _showScheduleSheet(context, existing: s),
                 ),
               );
             },
@@ -59,10 +59,14 @@ class _SchoolModePageState extends ConsumerState<SchoolModePage> {
     );
   }
 
-  void _showAddScheduleSheet(BuildContext context) {
-    int selectedDay = 1;
-    TimeOfDay startTime = const TimeOfDay(hour: 7, minute: 0);
-    TimeOfDay endTime = const TimeOfDay(hour: 14, minute: 0);
+  void _showScheduleSheet(BuildContext context, {Schedule? existing}) {
+    int selectedDay = existing?.dayOfWeek ?? 1;
+    TimeOfDay startTime = existing != null
+        ? _parseTimeOfDay(existing.startTime)
+        : const TimeOfDay(hour: 7, minute: 0);
+    TimeOfDay endTime = existing != null
+        ? _parseTimeOfDay(existing.endTime)
+        : const TimeOfDay(hour: 14, minute: 0);
 
     showModalBottomSheet(
       context: context,
@@ -79,7 +83,10 @@ class _SchoolModePageState extends ConsumerState<SchoolModePage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Jadwal Mode Sekolah', style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                existing != null ? 'Edit Jadwal' : 'Tambah Jadwal',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               const SizedBox(height: 16),
               DropdownButtonFormField<int>(
                 value: selectedDay,
@@ -126,10 +133,10 @@ class _SchoolModePageState extends ConsumerState<SchoolModePage> {
               const SizedBox(height: 24),
               FilledButton(
                 onPressed: () {
-                  _saveSchedule(selectedDay, startTime, endTime);
+                  _saveSchedule(selectedDay, startTime, endTime, existing: existing);
                   Navigator.pop(context);
                 },
-                child: const Text('Simpan'),
+                child: Text(existing != null ? 'Perbarui' : 'Tambah'),
               ),
             ],
           ),
@@ -138,24 +145,36 @@ class _SchoolModePageState extends ConsumerState<SchoolModePage> {
     );
   }
 
-  void _showEditScheduleSheet(BuildContext context, Schedule s) {
-    // Similar to add, pre-fill with existing schedule
-    _showAddScheduleSheet(context);
+  TimeOfDay _parseTimeOfDay(String time) {
+    final parts = time.split(':');
+    return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
   }
 
-  Future<void> _saveSchedule(int day, TimeOfDay start, TimeOfDay end) async {
+  Future<void> _saveSchedule(int day, TimeOfDay start, TimeOfDay end, {Schedule? existing}) async {
     final repo = ref.read(_scheduleRepoProvider);
-    final schedule = Schedule(
-      id: '',
-      childId: widget.childId,
-      dayOfWeek: day,
-      startTime: '${start.hour.toString().padLeft(2, '0')}:${start.minute.toString().padLeft(2, '0')}',
-      endTime: '${end.hour.toString().padLeft(2, '0')}:${end.minute.toString().padLeft(2, '0')}',
-      mode: 'school',
-      isEnabled: true,
-      createdAt: DateTime.now(),
-    );
-    await repo.saveSchedule(schedule);
+    final startStr = '${start.hour.toString().padLeft(2, '0')}:${start.minute.toString().padLeft(2, '0')}';
+    final endStr = '${end.hour.toString().padLeft(2, '0')}:${end.minute.toString().padLeft(2, '0')}';
+
+    if (existing != null) {
+      final updated = existing.copyWith(
+        dayOfWeek: day,
+        startTime: startStr,
+        endTime: endStr,
+      );
+      await repo.updateSchedule(updated);
+    } else {
+      final schedule = Schedule(
+        id: '',
+        childId: widget.childId,
+        dayOfWeek: day,
+        startTime: startStr,
+        endTime: endStr,
+        mode: 'school',
+        isEnabled: true,
+        createdAt: DateTime.now(),
+      );
+      await repo.createSchedule(schedule);
+    }
     ref.invalidate(_schoolSchedulesProvider(widget.childId));
   }
 

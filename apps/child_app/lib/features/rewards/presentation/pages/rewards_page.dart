@@ -12,17 +12,24 @@ class RewardsPage extends ConsumerWidget {
     final catalog = ref.watch(allBadgesCatalogProvider);
 
     ref.listen(badgesProvider, (prev, next) {
-      final prevBadges = prev?.valueOrNull ?? [];
-      final nextBadges = next?.valueOrNull ?? [];
-      if (prevBadges.length < nextBadges.length) {
-        _showCelebration(context);
+      // Only trigger on data→data transition, not initial load
+      if (prev?.hasValue == true && next.hasValue) {
+        final prevIds = prev!.valueOrNull!.map((b) => b.type.index).toSet();
+        final newIds = next.valueOrNull!
+            .where((b) => !prevIds.contains(b.type.index))
+            .toList();
+        if (newIds.isNotEmpty) {
+          _showCelebration(context, newIds.first.name);
+        }
       }
     });
 
     final reward = rewardAsync.valueOrNull;
     final streak = reward?.currentStreak ?? 0;
     final stars = reward?.totalStars ?? 0;
-    final unlockedIds = (badgesAsync.valueOrNull ?? []).map((b) => b.name).toSet();
+    final unlockedIds = (badgesAsync.valueOrNull ?? [])
+        .map((b) => b.type.index)
+        .toSet();
 
     return Scaffold(
       appBar: AppBar(title: const Text('🏆 Hadiah & Badge')),
@@ -116,7 +123,7 @@ class RewardsPage extends ConsumerWidget {
     );
   }
 
-  void _showCelebration(BuildContext context) {
+  void _showCelebration(BuildContext context, String badgeName) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -126,8 +133,9 @@ class RewardsPage extends ConsumerWidget {
             const Text('🎉', style: TextStyle(fontSize: 72)),
             const SizedBox(height: 16),
             Text(
-              'Badge Baru Diraih!',
+              'Badge "$badgeName" Diraih!',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
             ),
           ],
         ),

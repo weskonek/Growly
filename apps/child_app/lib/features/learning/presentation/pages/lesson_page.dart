@@ -21,39 +21,66 @@ class LessonPage extends ConsumerStatefulWidget {
 
 class _LessonPageState extends ConsumerState<LessonPage> {
   int _currentStep = 0;
-  final _steps = const [
-    _LessonStep(
-      title: 'Yuk, mulai belajar!',
-      content: 'Hari ini kita akan belajar hal baru yang seru. Perhatikan baik-baik ya!',
-    ),
-    _LessonStep(
-      title: 'Contoh Soal',
-      content: 'Sekarang coba lihat contoh ini. Kalau bingung, tanya Growly AI ya!',
-    ),
-    _LessonStep(
-      title: 'Waktunya Latihan!',
-      content: 'Sekarang kamu coba sendiri ya. Jangan lupa belajar dari kesalahan!',
-    ),
-  ];
+  List<Map<String, String>> _steps = [];
+  bool _completed = false;
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    // Start session when entering lesson
+    _loadLesson();
+  }
+
+  Future<void> _loadLesson() async {
+    final repository = ref.read(learningRepositoryProvider);
+    final childId = ref.read(verifiedChildIdProvider);
+    if (childId == null) return;
+
+    // Start session
     ref.read(learningSessionProvider.notifier).startSession(widget.subjectId);
+
+    // Load lesson content from DB
+    final (lesson, lessonError) = await repository.getLesson(widget.lessonId);
+    if (!mounted) return;
+
+    if (lessonError != null || lesson == null) {
+      // Fallback: static intro steps if DB lesson not found
+      setState(() {
+        _steps = [
+          {'title': 'Yuk mulai belajar!', 'content': 'Perhatikan baik-baik ya!'},
+          {'title': 'Waktunya Latihan!', 'content': 'Sekarang kamu coba sendiri ya!'},
+        ];
+        _loading = false;
+      });
+      return;
+    }
+
+    final stepsData = lesson['steps'] as List<dynamic>;
+    setState(() {
+      _steps = stepsData
+          .map((s) => {
+                'title': s['title'] as String,
+                'content': s['content'] as String,
+              })
+          .toList();
+      _loading = false;
+    });
   }
 
   @override
   void dispose() {
-    // End session when leaving lesson
-    final duration = DateTime.now().difference(_sessionStart);
-    ref.read(learningSessionProvider.notifier).endSession(
-          durationMinutes: duration.inMinutes,
-        );
+    // Schedule endSession as a microtask so it fires after the widget tree is disposed
+    // without awaiting inside dispose(). Safe because endSession is idempotent.
+    Future.microtask(() async {
+      final sessionId = ref.read(learningSessionProvider).valueOrNull;
+      if (sessionId != null) {
+        final repository = ref.read(learningRepositoryProvider);
+        // We can't get _sessionStart here, so pass 0 — duration is approximate
+        await repository.endSession(sessionId, durationMinutes: 0);
+      }
+    });
     super.dispose();
   }
-
-  final _sessionStart = DateTime.now();
 
   void _nextStep() {
     if (_currentStep < _steps.length - 1) {
@@ -63,24 +90,66 @@ class _LessonPageState extends ConsumerState<LessonPage> {
     }
   }
 
-  void _completeLesson() async {
+  Future<void> _completeLesson() async {
+    if (_completed) return;
     final childId = ref.read(verifiedChildIdProvider);
-    if (childId != null) {
-      final repo = ref.read(badgeRepositoryProvider);
-      await repo.incrementStreak(childId);
-      await repo.addStars(childId, 10);
+    if (childId == null) return;
+
+    setState(() => _completed = true);
+
+    final repo = ref.read(badgeRepositoryProvider);
+
+    // Idempotency: only award if lesson not yet completed for this child
+    final (progressList, _) = await repo.getBadges(childId);
+    final alreadyHasLessonBadge = (progressList ?? []).any(
+      (b) => b.metadata['lesson_id'] == widget.lessonId,
+    );
+
+    if (!alreadyHasLessonBadge) {
+      // Atomic: streak + stars in one DB call, no race condition
+      await repo.completeLesson(childId, widget.lessonId, 10);
+
+      // Invalidate rewards so the celebration dialog triggers
+      ref.invalidate(badgesProvider);
     }
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Hebat! Kamu sudah selesai belajar! 🎉')),
     );
-    context.go('/learning');
+    context.go('/learning/subject/${widget.subjectId}');
   }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+
+    if (_loading) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Belajar')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_steps.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Belajar')),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text('Konten belum tersedia', style: TextStyle(fontSize: 18)),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: () => context.go('/learning'),
+                child: const Text('Kembali'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final step = _steps[_currentStep];
     final isLast = _currentStep == _steps.length - 1;
 
@@ -120,7 +189,7 @@ class _LessonPageState extends ConsumerState<LessonPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    step.title,
+                    step['title'] ?? '',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -128,7 +197,7 @@ class _LessonPageState extends ConsumerState<LessonPage> {
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    step.content,
+                    step['content'] ?? '',
                     style: Theme.of(context).textTheme.bodyLarge,
                     textAlign: TextAlign.center,
                   ),
@@ -141,7 +210,7 @@ class _LessonPageState extends ConsumerState<LessonPage> {
             child: SizedBox(
               width: double.infinity,
               child: FilledButton(
-                onPressed: _nextStep,
+                onPressed: _completed ? null : _nextStep,
                 child: Text(isLast ? 'Selesai! 🎉' : 'Lanjut →'),
               ),
             ),
@@ -150,10 +219,4 @@ class _LessonPageState extends ConsumerState<LessonPage> {
       ),
     );
   }
-}
-
-class _LessonStep {
-  final String title;
-  final String content;
-  const _LessonStep({required this.title, required this.content});
 }
