@@ -1,6 +1,6 @@
 # Growly Integration Status
 
-> Last audited: 2026-04-29
+> Last audited: 2026-04-29 (2nd pass)
 > Audited by: Claude Code
 > Scope: parent_app (Flutter), child_app (Flutter), admin_web (Next.js), growly_core (package), backend/supabase (migrations + edge functions)
 
@@ -201,7 +201,7 @@
 |---|---|---|
 | PIN set on child creation | ✅ | Stored as bcrypt hash in `pin_hash` column |
 | PIN verification RPC | ✅ | `verify_child_pin(p_child_id, p_pin)` |
-| PIN change in parent app | ⚠️ | No dedicated "change PIN" UI — handled in child detail |
+| PIN change in parent app | ✅ | `set_child_pin` RPC with form validation in child detail page |
 | PIN reset flow | ⚠️ | No "forgot PIN" flow for child |
 
 ### 4.4 Soft Delete Consistency
@@ -221,7 +221,7 @@
 | Subscription repository | ✅ | `ISubscriptionRepository` + `SubscriptionRepositoryImpl` |
 | `canAddChildProvider` | ✅ | Gates AddChildPage — shows upgrade banner at limit |
 | `tierGateProvider` | ✅ | Family provider for feature-level tier checks |
-| Tier enforcement in child app | ⚠️ | Provider exists, not yet wired to AI Tutor page |
+| Tier enforcement in child app | ✅ | `aiTutorTierGateProvider` checks subscription tier, shows paywall screen |
 | RLS on subscriptions | ✅ | Parents can only view their own subscription |
 
 ### 4.6 Edge Function Security
@@ -301,7 +301,8 @@
 ### 5.8 Rate Limiting
 | Item | Status | Notes |
 |---|---|---|
-| AI tutor per-session limit | ✅ | 20 messages via `rate_limit_state` |
+| Per-IP rate limit AI tutor | ✅ | 10 req/min via in-memory `ipRequestLog` in ai-tutor edge function |
+| AI tutor per-session limit | ✅ | 20 requests/child/hour via `ai_tutor_sessions` count in edge function |
 | PIN verification | ✅ | Max 5 failed attempts/15 min via `pin_attempt_log` + migration 0010 |
 
 ---
@@ -310,11 +311,7 @@
 
 | Priority | Item | Files |
 |---|---|---|
-| 🟡 Medium | Add tier gating to child app AI Tutor page | `child_app/` |
-| 🟡 Medium | Add "forgot PIN" parent flow for child account recovery | `parent_app/` |
-| 🟡 Medium | Add per-IP rate limit to `ai-tutor` edge function | Edge function |
 | 🟢 Low | Complete content management page | `admin_web/src/app/dashboard/content/` |
-| 🟢 Low | Add "change PIN" dedicated UI in parent app | `parent_app/` |
 
 ---
 
