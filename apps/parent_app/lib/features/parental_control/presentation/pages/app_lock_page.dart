@@ -98,9 +98,17 @@ class _AppLockPageState extends ConsumerState<AppLockPage> {
             ),
             const SizedBox(height: 24),
             FilledButton(
-              onPressed: () {
-                // Add restriction logic
+              onPressed: () async {
+                final appName = _appNameController.text.trim();
+                final appPackage = _appPackageController.text.trim();
+                if (appPackage.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Package name wajib diisi')),
+                  );
+                  return;
+                }
                 Navigator.pop(context);
+                await _addRestriction(appName, appPackage);
               },
               child: const Text('Tambah'),
             ),
@@ -111,9 +119,40 @@ class _AppLockPageState extends ConsumerState<AppLockPage> {
     );
   }
 
+  Future<void> _addRestriction(String appName, String appPackage) async {
+    final repo = ref.read(_appRestrictionRepoProvider);
+    // Generate a stable client-side ID (upsert will use this)
+    final id = '${widget.childId}_${appPackage.hashCode.abs()}';
+    final restriction = AppRestriction(
+      id: id,
+      childId: widget.childId,
+      appPackage: appPackage,
+      appName: appName.isNotEmpty ? appName : null,
+      isAllowed: false,
+      createdAt: DateTime.now(),
+    );
+    final (result, failure) = await repo.saveRestriction(restriction);
+    if (!mounted) return;
+    if (failure != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal: $failure'), backgroundColor: Colors.red),
+      );
+    } else {
+      _appNameController.clear();
+      _appPackageController.clear();
+      ref.invalidate(_appRestrictionsProvider(widget.childId));
+    }
+  }
+
   Future<void> _toggleRestriction(AppRestriction r, bool isAllowed) async {
     final repo = ref.read(_appRestrictionRepoProvider);
-    await repo.saveRestriction(r.copyWith(isAllowed: isAllowed));
+    final (result, failure) = await repo.saveRestriction(r.copyWith(isAllowed: isAllowed));
+    if (!mounted) return;
+    if (failure != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal: $failure'), backgroundColor: Colors.red),
+      );
+    }
     ref.invalidate(_appRestrictionsProvider(widget.childId));
   }
 }

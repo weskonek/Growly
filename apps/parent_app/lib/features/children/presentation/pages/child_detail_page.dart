@@ -36,6 +36,21 @@ class _ChildDetailPageState extends ConsumerState<ChildDetailPage> {
   Widget build(BuildContext context) {
     final childAsync = ref.watch(selectedChildDetailProvider(widget.childId));
 
+    ref.listen(updateChildProvider, (prev, next) {
+      if (next.hasError && (prev == null || !prev.hasError)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal: ${next.error}'), backgroundColor: Colors.red),
+        );
+      }
+      if (next.hasValue && (prev == null || !prev.hasValue)) {
+        setState(() => _isEditing = false);
+        ref.invalidate(selectedChildDetailProvider(widget.childId));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profil berhasil diperbarui')),
+        );
+      }
+    });
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Detail Profil Anak'),
@@ -178,12 +193,6 @@ class _ChildDetailPageState extends ConsumerState<ChildDetailPage> {
     if (!_formKey.currentState!.validate()) return;
     final updated = child.copyWith(name: _nameController.text.trim());
     await ref.read(updateChildProvider.notifier).updateChild(updated);
-    if (mounted) {
-      setState(() => _isEditing = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profil berhasil diperbarui')),
-      );
-    }
   }
 
   Future<void> _confirmDelete(ChildProfile child) async {
@@ -207,14 +216,18 @@ class _ChildDetailPageState extends ConsumerState<ChildDetailPage> {
       ),
     );
 
-    if (confirmed == true) {
-      await ref.read(deleteChildProvider.notifier).deleteChild(child.id);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profil dinonaktifkan')),
-        );
-        context.go('/children');
-      }
+    if (confirmed != true) return;
+    final success = await ref.read(deleteChildProvider.notifier).deleteChild(child.id);
+    if (!mounted) return;
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profil dinonaktifkan')),
+      );
+      context.go('/children');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gagal menghapus profil'), backgroundColor: Colors.red),
+      );
     }
   }
 }
