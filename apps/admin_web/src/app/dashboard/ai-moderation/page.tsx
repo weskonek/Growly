@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { BotMessageSquare, AlertTriangle, Check } from 'lucide-react'
 import { AiModerationActions } from './actions-client'
+import { MessageBubble } from '@/components/message-bubble'
 
 interface SessionWithRelations {
   id: string
@@ -129,18 +130,7 @@ export default async function AIModerationPage() {
                         msg.role === 'user' ? 'justify-end' : 'justify-start'
                       }`}
                     >
-                      <div
-                        className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                          msg.role === 'user'
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-slate-200 text-slate-900'
-                        }`}
-                      >
-                        <p className="text-xs opacity-70 mb-1">
-                          {msg.role === 'user' ? 'Child' : 'AI Tutor'}
-                        </p>
-                        <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                      </div>
+                      <MessageBubble content={msg.content} role={msg.role} />
                     </div>
                   ))}
                 </div>

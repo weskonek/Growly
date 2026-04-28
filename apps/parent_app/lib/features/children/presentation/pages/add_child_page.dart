@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/child_providers.dart' show createChildProvider;
+import '../../../../core/providers/subscription_provider.dart';
 
 class AddChildPage extends ConsumerStatefulWidget {
   const AddChildPage({super.key});
@@ -31,18 +32,14 @@ class _AddChildPageState extends ConsumerState<AddChildPage> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final childState = ref.watch(createChildProvider);
+    final canAddAsync = ref.watch(canAddChildProvider);
 
-    // Listen to provider state changes for error/success feedback
     ref.listen(createChildProvider, (prev, next) {
       if (next.hasError && (prev == null || !prev.hasError)) {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gagal: ${next.error}'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Gagal: ${next.error}'), backgroundColor: Colors.red),
         );
       }
       if (next.hasValue && next.value != null && (prev == null || prev.value == null)) {
@@ -56,113 +53,146 @@ class _AddChildPageState extends ConsumerState<AddChildPage> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Tambah Profil Anak')),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Avatar selection
-                Text(
-                  'Pilih Avatar',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 72,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _avatarOptions.length,
-                    itemBuilder: (context, index) {
-                      final avatar = _avatarOptions[index];
-                      final isSelected = _selectedAvatar == avatar;
-                      return GestureDetector(
-                        onTap: () => setState(() => _selectedAvatar = avatar),
-                        child: Container(
-                          width: 64,
-                          height: 64,
-                          margin: const EdgeInsets.only(right: 12),
-                          decoration: BoxDecoration(
-                            color: isSelected ? cs.primaryContainer : cs.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(16),
-                            border: isSelected
-                                ? Border.all(color: cs.primary, width: 2)
-                                : null,
-                          ),
-                          child: Center(
-                            child: Text(avatar, style: const TextStyle(fontSize: 32)),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 24),
-                // Name field
-                TextFormField(
-                  controller: _nameController,
-                  textCapitalization: TextCapitalization.words,
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: 'Nama Anak',
-                    prefixIcon: Icon(Icons.person_outlined),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Nama wajib diisi';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                // Birth date picker
-                InkWell(
-                  onTap: _pickDate,
-                  child: InputDecorator(
-                    decoration: const InputDecoration(
-                      labelText: 'Tanggal Lahir',
-                      prefixIcon: Icon(Icons.cake_outlined),
-                    ),
-                    child: Text(
-                      _selectedDate != null
-                          ? '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'
-                          : 'Pilih tanggal',
-                      style: TextStyle(
-                        color: _selectedDate != null ? null : Colors.grey,
+      body: canAddAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (_, __) => _buildForm(context, childState, Theme.of(context).colorScheme),
+        data: (canAdd) => canAdd
+            ? _buildForm(context, childState, Theme.of(context).colorScheme)
+            : _buildUpgradeBanner(context),
+      ),
+    );
+  }
+
+  Widget _buildUpgradeBanner(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text('👶', style: TextStyle(fontSize: 64)),
+            const SizedBox(height: 16),
+            Text(
+              'Batas Anak Tercapai',
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Akun Free hanya bisa menambahkan hingga 2 anak. Upgrade ke Premium untuk menambah lebih banyak.',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 24),
+            FilledButton(
+              onPressed: () => context.go('/settings/subscription'),
+              child: const Text('Upgrade Sekarang'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildForm(BuildContext context, AsyncValue childState, ColorScheme cs) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Pilih Avatar',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 72,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: _avatarOptions.length,
+                itemBuilder: (context, index) {
+                  final avatar = _avatarOptions[index];
+                  final isSelected = _selectedAvatar == avatar;
+                  return GestureDetector(
+                    onTap: () => setState(() => _selectedAvatar = avatar),
+                    child: Container(
+                      width: 64,
+                      height: 64,
+                      margin: const EdgeInsets.only(right: 12),
+                      decoration: BoxDecoration(
+                        color: isSelected ? cs.primaryContainer : cs.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(16),
+                        border: isSelected
+                            ? Border.all(color: cs.primary, width: 2)
+                            : null,
+                      ),
+                      child: Center(
+                        child: Text(avatar, style: const TextStyle(fontSize: 32)),
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // PIN field (optional)
-                TextFormField(
-                  controller: _pinController,
-                  keyboardType: TextInputType.number,
-                  obscureText: true,
-                  maxLength: 6,
-                  decoration: const InputDecoration(
-                    labelText: 'PIN (opsional)',
-                    prefixIcon: Icon(Icons.pin_outlined),
-                    helperText: '4-6 digit untuk anak masuk app',
-                  ),
-                ),
-                const SizedBox(height: 32),
-                // Save button — driven by provider state
-                FilledButton(
-                  onPressed: childState.isLoading ? null : _saveChild,
-                  child: childState.isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Text('Simpan'),
-                ),
-              ],
+                  );
+                },
+              ),
             ),
-          ),
+            const SizedBox(height: 24),
+            TextFormField(
+              controller: _nameController,
+              textCapitalization: TextCapitalization.words,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(
+                labelText: 'Nama Anak',
+                prefixIcon: Icon(Icons.person_outlined),
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Nama wajib diisi';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            InkWell(
+              onTap: _pickDate,
+              child: InputDecorator(
+                decoration: const InputDecoration(
+                  labelText: 'Tanggal Lahir',
+                  prefixIcon: Icon(Icons.cake_outlined),
+                ),
+                child: Text(
+                  _selectedDate != null
+                      ? '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'
+                      : 'Pilih tanggal',
+                  style: TextStyle(
+                    color: _selectedDate != null ? null : Colors.grey,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _pinController,
+              keyboardType: TextInputType.number,
+              obscureText: true,
+              maxLength: 6,
+              decoration: const InputDecoration(
+                labelText: 'PIN (opsional)',
+                prefixIcon: Icon(Icons.pin_outlined),
+                helperText: '4-6 digit untuk anak masuk app',
+              ),
+            ),
+            const SizedBox(height: 32),
+            FilledButton(
+              onPressed: childState.isLoading ? null : _saveChild,
+              child: childState.isLoading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Text('Simpan'),
+            ),
+          ],
         ),
       ),
     );

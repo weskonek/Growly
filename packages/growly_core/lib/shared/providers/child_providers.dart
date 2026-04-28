@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/database/remote/supabase_service.dart';
 import '../../../data/repositories/child_repository_impl.dart';
 import '../../../data/repositories/learning_repository_impl.dart';
@@ -46,11 +48,34 @@ class ChildrenListNotifier extends AsyncNotifier<List<ChildProfile>> {
       throw Exception('Sesi habis. Silakan login ulang.');
     }
 
+    // Set up realtime subscription to auto-invalidate when child data changes
+    _watchChildren(user.id);
+
     final (children, failure) = await repository.getChildren(user.id);
     if (failure != null) {
       throw Exception(failure.message);
     }
     return children ?? [];
+  }
+
+  void _watchChildren(String parentId) {
+    // Subscribe to child_profiles changes for this parent
+    final channel = SupabaseService.client
+        .channel('children-realtime')
+        .onPostgresChanges(
+          schema: 'public',
+          table: 'child_profiles',
+          event: PostgresChangeEvent.all,
+          callback: (payload) {
+            // Invalidate when any child's data changes
+            ref.invalidateSelf();
+          },
+        )
+        .subscribe();
+
+    ref.onDispose(() {
+      SupabaseService.client.removeChannel(channel);
+    });
   }
 
   Future<void> refresh() async {

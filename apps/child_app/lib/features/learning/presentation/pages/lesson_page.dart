@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:child_app/features/learning/providers/learning_providers.dart';
+import 'package:child_app/features/rewards/providers/rewards_providers.dart';
+import 'package:child_app/core/router/child_router.dart' show verifiedChildIdProvider;
 
 class LessonPage extends ConsumerStatefulWidget {
   final String subjectId;
@@ -61,7 +63,15 @@ class _LessonPageState extends ConsumerState<LessonPage> {
     }
   }
 
-  void _completeLesson() {
+  void _completeLesson() async {
+    final childId = ref.read(verifiedChildIdProvider);
+    if (childId != null) {
+      final repo = ref.read(badgeRepositoryProvider);
+      await repo.incrementStreak(childId);
+      await repo.addStars(childId, 10);
+    }
+
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Hebat! Kamu sudah selesai belajar! 🎉')),
     );

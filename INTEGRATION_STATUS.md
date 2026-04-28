@@ -1,6 +1,6 @@
 # Growly Integration Status
 
-> Last audited: 2026-04-28
+> Last audited: 2026-04-29
 > Audited by: Claude Code
 > Scope: parent_app (Flutter), child_app (Flutter), admin_web (Next.js), growly_core (package), backend/supabase (migrations + edge functions)
 
@@ -190,9 +190,9 @@
 |---|---|---|
 | `SyncManager.watchTable` defined | ✅ | `growly_core/lib/core/database/sync/sync_manager.dart` |
 | `SyncService.watchTable` defined | ✅ | `growly_core/lib/shared/services/sync_service.dart` |
-| Used in parent_app | ❌ | No app imports or uses these services |
-| Used in child_app | ❌ | No app imports or uses these services |
-| Supabase Realtime enabled | ⚠️ | Channels defined but not subscribed in UI |
+| Used in parent_app | ✅ | `ChildrenListNotifier` subscribes via `onPostgresChanges` |
+| Used in child_app | ⚠️ | Not wired — only parent list has realtime |
+| Supabase Realtime enabled | ✅ | Channel created and cleaned up via `ref.onDispose` |
 
 **Action required:** Wire `SyncService` into parent_app child list or use `ref.invalidate` on relevant providers when data changes.
 
@@ -217,9 +217,11 @@
 | Item | Status | Notes |
 |---|---|---|
 | `subscriptions` table exists | ✅ | Migration 00009 applies RLS |
-| Subscription repository | ❌ | No `ISubscriptionRepository` in growly_core |
-| Tier enforcement in parent app | ❌ | No `subscriptionProvider` or tier checks |
-| Tier enforcement in child app | ❌ | No feature gating based on tier |
+| Subscription model | ✅ | `SubscriptionModel` + `SubscriptionTier` enum in growly_core |
+| Subscription repository | ✅ | `ISubscriptionRepository` + `SubscriptionRepositoryImpl` |
+| `canAddChildProvider` | ✅ | Gates AddChildPage — shows upgrade banner at limit |
+| `tierGateProvider` | ✅ | Family provider for feature-level tier checks |
+| Tier enforcement in child app | ⚠️ | Provider exists, not yet wired to AI Tutor page |
 | RLS on subscriptions | ✅ | Parents can only view their own subscription |
 
 **Action required:** Implement `SubscriptionRepository` + tier enforcement UI (e.g., "Upgrade to Premium" banner).
@@ -304,7 +306,7 @@
 | Item | Status | Notes |
 |---|---|---|
 | AI tutor per-session limit | ✅ | 20 messages via `rate_limit_state` |
-| PIN verification | ⚠️ | No per-IP or per-child rate limit on `verify_child_pin` |
+| PIN verification | ✅ | Max 5 failed attempts/15 min via `pin_attempt_log` + migration 0010 |
 
 ---
 
@@ -312,14 +314,10 @@
 
 | Priority | Item | Files |
 |---|---|---|
-| 🔴 High | Wire `SyncService` into parent_app for live child list updates | `parent_app/` |
-| 🔴 High | Implement subscription tier enforcement | `growly_core/`, `parent_app/`, `child_app/` |
+| 🟡 Medium | Add tier gating to child app AI Tutor page | `child_app/` |
 | 🟡 Medium | Add "forgot PIN" parent flow for child account recovery | `parent_app/` |
-| 🟡 Medium | HTML-escape AI tutor message content in admin view | `admin_web/src/app/dashboard/ai-moderation/` |
-| 🟡 Medium | Implement rate limiting on `verify_child_pin` RPC | Edge function or DB function |
 | 🟡 Medium | Add per-IP rate limit to `ai-tutor` edge function | Edge function |
 | 🟢 Low | Complete content management page | `admin_web/src/app/dashboard/content/` |
-| 🟢 Low | Connect streak logic to DB in child app rewards | `child_app/` |
 | 🟢 Low | Add "change PIN" dedicated UI in parent app | `parent_app/` |
 
 ---
