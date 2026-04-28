@@ -221,26 +221,31 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
+    // Verify JWT and extract parent user
+    const { data: { user }, error: authError } = await supabase.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    )
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
     const { childId, question, mode = 'general' } = await req.json()
 
     if (!childId || !question) {
       return new Response(JSON.stringify({ error: 'Missing childId or question' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // Safety check
-    const safetyFilter = new SafetyFilter()
-    const flagReason = safetyFilter.getFlagReason(question)
-    const isInputUnsafe = !safetyFilter.isSafe(question)
-
-    // Get child profile
+    // Fetch child ONLY if it belongs to this parent (ownership validation)
     const { data: child, error } = await supabase
       .from('child_profiles')
       .select('name, birth_date, age_group')
       .eq('id', childId)
+      .eq('parent_id', user.id)
+      .eq('is_active', true)
       .single()
 
     if (error || !child) {
-      return new Response(JSON.stringify({ error: 'Child not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      return new Response(JSON.stringify({ error: 'Child not found or access denied' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
     // Rate limit: max 20 requests per child per hour
