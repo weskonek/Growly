@@ -42,7 +42,9 @@ class ChildrenListNotifier extends AsyncNotifier<List<ChildProfile>> {
     final repository = ref.watch(childRepositoryProvider);
     final supabase = SupabaseService.client;
     final user = supabase.auth.currentUser;
-    if (user == null) return [];
+    if (user == null) {
+      throw Exception('Sesi habis. Silakan login ulang.');
+    }
 
     final (children, failure) = await repository.getChildren(user.id);
     if (failure != null) {

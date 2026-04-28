@@ -17,7 +17,6 @@ class _AddChildPageState extends ConsumerState<AddChildPage> {
 
   DateTime? _selectedDate;
   String? _selectedAvatar;
-  bool _isLoading = false;
 
   final List<String> _avatarOptions = [
     '👦', '👧', '🧒', '👶', '🦸', '🧚', '🐼', '🦁', '🐰', '🐸',
@@ -33,6 +32,28 @@ class _AddChildPageState extends ConsumerState<AddChildPage> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final childState = ref.watch(createChildProvider);
+
+    // Listen to provider state changes for error/success feedback
+    ref.listen(createChildProvider, (prev, next) {
+      if (next.hasError && (prev == null || !prev.hasError)) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal: ${next.error}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      if (next.hasValue && next.value != null && (prev == null || prev.value == null)) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profil anak berhasil ditambahkan!')),
+        );
+        context.go('/children');
+      }
+    });
+
     return Scaffold(
       appBar: AppBar(title: const Text('Tambah Profil Anak')),
       body: SafeArea(
@@ -128,10 +149,10 @@ class _AddChildPageState extends ConsumerState<AddChildPage> {
                   ),
                 ),
                 const SizedBox(height: 32),
-                // Save button
+                // Save button — driven by provider state
                 FilledButton(
-                  onPressed: _isLoading ? null : _saveChild,
-                  child: _isLoading
+                  onPressed: childState.isLoading ? null : _saveChild,
+                  child: childState.isLoading
                       ? const SizedBox(
                           height: 20,
                           width: 20,
@@ -169,29 +190,12 @@ class _AddChildPageState extends ConsumerState<AddChildPage> {
       return;
     }
 
-    setState(() => _isLoading = true);
-    try {
-      final result = await ref.read(createChildProvider.notifier).createChild(
-            name: _nameController.text.trim(),
-            birthDate: _selectedDate!,
-            avatarUrl: _selectedAvatar,
-            pin: _pinController.text.isNotEmpty ? _pinController.text : null,
-          );
-
-      if (result != null && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profil anak berhasil ditambahkan!')),
+    await ref.read(createChildProvider.notifier).createChild(
+          name: _nameController.text.trim(),
+          birthDate: _selectedDate!,
+          avatarUrl: _selectedAvatar,
+          pin: _pinController.text.isNotEmpty ? _pinController.text : null,
         );
-        context.go('/children');
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal: $e'), backgroundColor: Colors.red),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
+    // Navigation and feedback handled by ref.listen above
   }
 }
