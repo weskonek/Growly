@@ -56,7 +56,7 @@ CREATE POLICY "Parents can insert consent logs"
   ON consent_logs FOR INSERT
   WITH CHECK (
     parent_id = auth.uid()
-    OR auth.jwt() ->> 'role' = 'service_role'
+    OR auth.jwt()->>'role' = 'service_role'
   );
 
 -- Parents can view their own consent logs
@@ -64,8 +64,8 @@ CREATE POLICY "Parents can view consent logs"
   ON consent_logs FOR SELECT
   USING (
     parent_id = auth.uid()
-    OR auth.jwt() ->> 'role' = 'service_role'
-    OR auth.jwt() ->> 'role' = 'authenticated'
+    OR auth.jwt()->>'role' = 'service_role'
+    OR auth.jwt()->>'role' = 'authenticated'
   );
 
 -- ============================================
@@ -120,7 +120,7 @@ CREATE POLICY "Parents can view subscription"
 -- Service role can manage subscriptions
 CREATE POLICY "Service role can manage subscriptions"
   ON subscriptions FOR ALL
-  USING (auth.jwt() ->> 'role' = 'service_role');
+  USING (auth.jwt()->>'role' = 'service_role');
 
 -- Trigger for updated_at
 CREATE OR REPLACE FUNCTION subscriptions_updated_at()
@@ -152,7 +152,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-COMMENT ON COLUMN child_profiles.is_deleted IS "Soft delete flag. Deleted records are hidden from normal queries but retained for data recovery.";
+COMMENT ON COLUMN child_profiles.is_deleted IS 'Soft delete flag. Deleted records are hidden from normal queries but retained for data recovery.';
 
 -- ============================================
 -- FIX 5: Update RLS policies to respect soft delete
@@ -162,20 +162,18 @@ DROP POLICY IF EXISTS "Parents can view children" ON child_profiles;
 CREATE POLICY "Parents can view children"
   ON child_profiles FOR SELECT
   USING (
-    parent_id = (SELECT id FROM parent_profiles WHERE auth_uid = auth.uid())
+    parent_id = auth.uid()
     AND is_deleted = FALSE
     AND is_active = TRUE
   );
 
 -- ============================================
--- FIX 6: Enable realtime for missing tables
+-- FIX 6: Enable realtime for existing tables
+-- Note: Tables created in this migration (consent_logs, subscriptions)
+-- will be added separately via Supabase Dashboard > Database > Replication
 -- ============================================
--- Note: Run these in Supabase dashboard > Database > Replication
--- Or via SQL:
-ALTER PUBLICATION supabase_realtime ADD TABLE screen_time_records;
-ALTER PUBLICATION supabase_realtime ADD TABLE ai_tutor_sessions;
-ALTER PUBLICATION supabase_realtime ADD TABLE consent_logs;
-ALTER PUBLICATION supabase_realtime ADD TABLE subscriptions;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.screen_time_records;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.ai_tutor_sessions;
 
 -- ============================================
 -- FIX 7: Fix ON DELETE CASCADE → SET NULL for audit trail retention
@@ -191,6 +189,4 @@ ALTER TABLE audit_logs ADD CONSTRAINT audit_logs_child_id_fkey
 CREATE INDEX IF NOT EXISTS idx_ai_sessions_created ON ai_tutor_sessions(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_ai_messages_created ON ai_tutor_messages(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_child ON audit_logs(child_id);
-CREATE INDEX IF NOT EXISTS idx_consent_logs_parent ON consent_logs(parent_id);
-CREATE INDEX IF NOT EXISTS idx_subscriptions_parent ON subscriptions(parent_id);
 CREATE INDEX IF NOT EXISTS idx_screen_time_child_date ON screen_time_records(child_id, date DESC);
