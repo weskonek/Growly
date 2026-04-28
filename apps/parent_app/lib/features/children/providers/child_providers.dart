@@ -92,23 +92,22 @@ class DeleteChildNotifier extends AsyncNotifier<bool> {
 
   Future<bool> deleteChild(String childId) async {
     state = const AsyncLoading();
-    final client = Supabase.instance.client;
-
-    final result = await client
-        .from('child_profiles')
-        .update({
-          'is_active': false,
-          'updated_at': DateTime.now().toIso8601String(),
-        })
-        .eq('id', childId);
-
-    if (result.error != null) {
-      state = AsyncError(result.error!.message, StackTrace.current);
+    try {
+      final client = Supabase.instance.client;
+      await client
+          .from('child_profiles')
+          .update({
+            'is_active': false,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', childId);
+      ref.invalidate(childrenListProvider);
+      state = const AsyncData(true);
+      return true;
+    } catch (e) {
+      state = AsyncError(e.toString(), StackTrace.current);
       return false;
     }
-    ref.invalidate(childrenListProvider);
-    state = const AsyncData(true);
-    return true;
   }
 }
 
