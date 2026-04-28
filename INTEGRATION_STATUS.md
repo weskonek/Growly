@@ -12,10 +12,11 @@
 | Item | Status | Notes |
 |---|---|---|
 | Login page | ✅ | Email/password via `signInWithPassword` |
-| Register page | ✅ | `signUp` with `data: {name}` |
+| Register page | ✅ | Trigger inserts name+email; register page only updates `phone` |
 | Auth state sync | ✅ | `AuthNotifier` listens to `onAuthStateChange` stream |
 | Router guard | ✅ | `go_router` `redirect` checks `isAuthenticatedProvider` |
 | Session expiry | ✅ | Throws user-facing `Exception('Sesi habis. Silakan login ulang.')` |
+| Router guard cold start flash | ✅ | `authState.isLoading` check prevents flash on cold start |
 | Logout | ✅ | `signOut` clears session + redirects to `/login` |
 
 ### 1.2 Dashboard
@@ -266,13 +267,8 @@
 | `subscriptions` RLS | ✅ | Parent view, service role all |
 | `audit_logs` RLS | ✅ | User sees own, service role all |
 | `badges` RLS | ✅ | Fixed to scope via `parent_id` subquery |
-| `ai_tutor_sessions` RLS | ✅ | Scoped via `child_id → parent_id` |
-| `child_profiles` RLS | ✅ | `is_active=true` filter, parent scope |
-| `app_restrictions` RLS | ✅ | `ar_all_by_parent` — ALL ops scoped via `child_id → parent_id` |
-| `screen_time_records` RLS | ✅ | `st_insert_authenticated` + `st_select_by_parent` |
 | `ai_tutor_sessions` RLS | ✅ | `ai_sess_insert_authenticated` + `ai_sess_select_by_parent` |
 | `ai_tutor_messages` RLS | ✅ | `ai_msg_insert_authenticated` + `ai_msg_select_by_parent` |
-| `badges` RLS | ✅ | Fixed by migration 00009 — scoped via `parent_id` subquery |
 
 ### 5.5 Input Sanitization
 | Item | Status | Notes |
@@ -287,7 +283,8 @@
 |---|---|---|
 | PIN never stored in plaintext | ✅ | bcrypt via `pgcrypto` |
 | PIN hash never sent to client | ✅ | Child app fetches `pin_hash` but RPC verifies |
-| Direct DB access to hash | ⚠️ | Child app fetches `pin_hash` — acceptable since RPC does verification |
+| PIN hash fetch to client | ✅ | Child app only selects `id, name` — `pin_hash` never sent to client |
+| PIN plaintext fallback | ✅ | Removed — verification always via `verify_child_pin` RPC |
 | `hash_pin` helper function | ✅ | `gen_salt('bf', 10)` with validation |
 
 ### 5.7 COPPA Compliance
