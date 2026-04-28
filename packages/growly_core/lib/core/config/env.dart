@@ -6,18 +6,18 @@ class Env {
   Env._();
 
   /// Supabase Configuration
-  /// Set via environment variables: SUPABASE_URL, SUPABASE_ANON_KEY
   static String get supabaseUrl {
     return const String.fromEnvironment(
       'SUPABASE_URL',
-      defaultValue: 'https://your-project.supabase.co',
+      defaultValue: 'https://scfgcegyvgkxntqmmerl.supabase.co',
     );
   }
 
   static String get supabaseAnonKey {
     return const String.fromEnvironment(
       'SUPABASE_ANON_KEY',
-      defaultValue: 'YOUR_ANON_KEY_HERE',
+      defaultValue:
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjZmdjZWd5dmdreG50cW1tZXJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyOTUwMDksImV4cCI6MjA5Mjg3MTAwOX0.BP7E05P1ARVSdLz_UH0BSlL9k309bOD_MipXFHbTQPY',
     );
   }
 
