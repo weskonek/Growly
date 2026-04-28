@@ -84,7 +84,7 @@ export class GeminiClient {
     // Check for safety blockages
     if (data.promptFeedback?.safetyRatings?.length) {
       const blocked = data.promptFeedback.safetyRatings.some(
-        rating => rating.probability === 'NEGLIGIBLE' === false
+        rating => rating.probability !== 'NEGLIGIBLE'
       )
       if (blocked) {
         console.warn('Content was blocked due to safety settings')
