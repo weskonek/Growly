@@ -99,7 +99,7 @@ class _ScreenTimePageState extends ConsumerState<ScreenTimePage> {
             child: BarChart(
               BarChartData(
                 gridData: const FlGridData(show: false),
-                titlesData: const FlTitlesData(
+                titlesData: FlTitlesData(
                   leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
                   rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
                   topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -120,7 +120,7 @@ class _ScreenTimePageState extends ConsumerState<ScreenTimePage> {
                     barRods: [
                       BarChartRodData(
                         toY: (i + 1) * 20.0,
-                        color: cs.primary.withOpacity(0.8),
+                        color: cs.primary.withValues(alpha: 0.8),
                         width: 20,
                         borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
                       ),

@@ -82,15 +82,18 @@ final weeklyScreenTimeProvider =
   final now = DateTime.now();
   final sevenDaysAgo = now.subtract(const Duration(days: 7));
 
-  final result = await client
-      .from('screen_time_records')
-      .select('date, duration_minutes')
-      .eq('child_id', childId)
-      .gte('date', sevenDaysAgo.toIso8601String().split('T')[0])
-      .lte('date', now.toIso8601String().split('T')[0])
-      .order('date');
-
-  if (result.error != null) return [];
-  final List<dynamic> data = result.data ?? [];
-  return List<Map<String, dynamic>>.from(data);
+  try {
+    final List<Map<String, dynamic>> result = List<Map<String, dynamic>>.from(
+      await client
+          .from('screen_time_records')
+          .select('date, duration_minutes')
+          .eq('child_id', childId)
+          .gte('date', sevenDaysAgo.toIso8601String().split('T')[0])
+          .lte('date', now.toIso8601String().split('T')[0])
+          .order('date'),
+    );
+    return result;
+  } catch (e) {
+    return [];
+  }
 });

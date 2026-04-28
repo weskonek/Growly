@@ -84,7 +84,7 @@ final screenTimeLimitProvider =
 
   final dailyLimit = restrictions
       .where((r) => r.scheduleLimits['daily_limit'] != null)
-      .fold<int>(120, (acc, r) => r.scheduleLimits['daily_limit'] as int? ?? acc);
+      .fold<int>(120, (acc, r) => r.scheduleLimits['daily_limit'] ?? acc);
   return dailyLimit;
 });
 
