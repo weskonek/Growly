@@ -15,30 +15,31 @@ final verifiedChildIdProvider = StateProvider<String?>((ref) => null);
 /// Bridges Riverpod StateProvider to go_router's refreshListenable.
 /// Router rebuilds redirect when verifiedChildIdProvider changes.
 class _VerifiedIdNotifier extends ChangeNotifier {
-  _VerifiedIdNotifier(this._ref) {
-    _ref.listen(verifiedChildIdProvider, (_, __) {
+  _VerifiedIdNotifier(this._container) {
+    _container.listen(verifiedChildIdProvider, (_, __) {
       notifyListeners();
     });
   }
 
-  final WidgetRef _ref;
+  final ProviderContainer _container;
 }
 
 /// Router provider for child app with PIN gate protection.
 final childRouterProvider = Provider<GoRouter>((ref) {
-  final notifier = _VerifiedIdNotifier(ref);
+  final container = ProviderContainer();
+  ref.onDispose(container.dispose);
 
   return GoRouter(
     initialLocation: '/launcher',
     redirect: (context, state) {
       if (state.matchedLocation == '/launcher') return null;
 
-      final verifiedId = ref.read(verifiedChildIdProvider);
+      final verifiedId = container.read(verifiedChildIdProvider);
       if (verifiedId == null) return '/launcher';
 
       return null;
     },
-    refreshListenable: notifier,
+    refreshListenable: _VerifiedIdNotifier(container),
     routes: [
       GoRoute(
         path: '/launcher',
