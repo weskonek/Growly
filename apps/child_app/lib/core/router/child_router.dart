@@ -9,8 +9,28 @@ import '../../features/ai_tutor/presentation/pages/ai_tutor_page.dart';
 import '../../features/rewards/presentation/pages/rewards_page.dart';
 
 /// Tracks whether the child has been verified via PIN gate
-/// Exposed so child_launcher_page.dart can write to it after PIN verification
 final verifiedChildIdProvider = StateProvider<String?>((ref) => null);
+
+/// Notifier that fires Listenable listeners when verifiedChildIdProvider changes.
+/// GoRouter uses this to re-evaluate redirects reactively.
+class _VerifiedIdNotifier extends StateNotifier<String?> implements Listenable {
+  _VerifiedIdNotifier(WidgetRef ref)
+      : super(ref.watch(verifiedChildIdProvider)) {
+    ref.listen(verifiedChildIdProvider, (_, next) {
+      state = next;
+      for (final listener in _listeners) {
+        listener();
+      }
+    });
+  }
+
+  final _listeners = <VoidCallback>[];
+
+  @override
+  void addListener(VoidCallback listener) => _listeners.add(listener);
+  @override
+  void removeListener(VoidCallback listener) => _listeners.remove(listener);
+}
 
 /// Router provider for child app with PIN gate protection.
 /// Uses refreshListenable so redirect re-evaluates when verifiedChildIdProvider changes.
