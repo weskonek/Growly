@@ -23,6 +23,7 @@ const navigation = [
   { name: 'AI Moderation', href: '/dashboard/ai-moderation', icon: BotMessageSquare },
   { name: 'Screen Time', href: '/dashboard/screen-time', icon: Clock },
   { name: 'Learning', href: '/dashboard/learning', icon: BookOpen },
+  { name: 'Content', href: '/dashboard/content', icon: BookOpen },
   { name: 'Audit Logs', href: '/dashboard/audit-logs', icon: FileText },
 ]
 
