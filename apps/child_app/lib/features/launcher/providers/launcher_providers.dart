@@ -1,14 +1,29 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:growly_core/growly_core.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// Currently selected child profile in child app
-/// Fetches from Supabase using child ID stored in flutter_secure_storage
-/// TODO: integrate with flutter_secure_storage after PIN verification
+import '../../../core/router/child_router.dart';
+
+/// Fetches child profile for the verified child ID.
+/// Returns null if no child is verified yet (PIN gate shown).
 final currentChildProvider = FutureProvider<ChildProfile?>((ref) async {
-  // TODO: integrate with flutter_secure_storage to get child ID after PIN verification
-  // For now, returns null — child must complete PIN flow first
-  return null;
+  final childId = ref.watch(verifiedChildIdProvider);
+  if (childId == null) return null;
+
+  final client = Supabase.instance.client;
+  try {
+    final response = await client
+        .from('child_profiles')
+        .select()
+        .eq('id', childId)
+        .eq('is_active', true)
+        .maybeSingle();
+
+    if (response == null) return null;
+    return ChildProfile.fromJson(Map<String, dynamic>.from(response));
+  } catch (_) {
+    return null;
+  }
 });
 
 /// App restrictions for launcher (whitelist)
