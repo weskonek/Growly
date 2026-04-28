@@ -210,6 +210,8 @@ serve(async (req) => {
     }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   }
 
+  const safetyFilter = new SafetyFilter()
+
   try {
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
