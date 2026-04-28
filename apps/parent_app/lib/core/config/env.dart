@@ -1,18 +1,13 @@
-// ignore_for_file: do_not_use_environment
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AppEnv {
-  static const supabaseUrl = String.fromEnvironment(
-    'SUPABASE_URL',
-    defaultValue: 'https://your-project.supabase.co',
-  );
+  static String get supabaseUrl =>
+      dotenv.env['SUPABASE_URL'] ?? 'https://your-project.supabase.co';
 
-  static const supabaseAnonKey = String.fromEnvironment(
-    'SUPABASE_ANON_KEY',
-    defaultValue: 'your-anon-key',
-  );
+  static String get supabaseAnonKey =>
+      dotenv.env['SUPABASE_ANON_KEY'] ?? 'your-anon-key';
 
-  static const aiGatewayUrl = String.fromEnvironment(
-    'AI_GATEWAY_URL',
-    defaultValue: 'https://your-project.supabase.co/functions/v1/ai-tutor',
-  );
+  static String get aiGatewayUrl =>
+      dotenv.env['AI_GATEWAY_URL'] ??
+      'https://your-project.supabase.co/functions/v1/ai-tutor';
 }
