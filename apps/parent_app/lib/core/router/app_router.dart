@@ -25,7 +25,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/dashboard',
     redirect: (context, state) {
-      final isLoggedIn = authState.valueOrNull != null;
+      // Wait for auth state to load — prevents flash of login screen on cold start
+      if (authState.isLoading || authState.valueOrNull == null) return null;
+
+      final isLoggedIn = authState.valueOrNull!.session != null;
       final isAuthRoute = state.matchedLocation.startsWith('/auth');
 
       if (!isLoggedIn && !isAuthRoute) return '/auth/login';

@@ -73,57 +73,25 @@ class _PinGateState extends ConsumerState<_PinGate> {
     });
 
     try {
-      // Fetch all active children with their PIN hashes
-      // We verify locally using bcrypt comparison (same logic as DB verify_child_pin)
+      // Fetch active children — id + name only; NEVER fetch pin_hash to client
       final children = await Supabase.instance.client
           .from('child_profiles')
-          .select('id, name, pin_hash')
+          .select('id, name')
           .eq('is_active', true)
           .not('pin_hash', 'is', null);
 
-      // Find the child whose pin_hash matches the entered PIN
-      // bcrypt verification: crypt(input, hash) == hash
       dynamic matchedChild;
       for (final child in children) {
-        final storedHash = child['pin_hash'] as String?;
-        if (storedHash != null && storedHash.isNotEmpty) {
-          // Verify using the same bcrypt logic as the DB function
-          // We do a direct string comparison since we can't call crypt() from Dart
-          // Instead: query via RPC if available, otherwise use a workaround
-          // The simplest reliable approach: try verify_child_pin RPC per child
-          try {
-            final result = await Supabase.instance.client.rpc(
-              'verify_child_pin',
-              params: {
-                'p_child_id': child['id'] as String,
-                'p_pin': pin,
-              },
-            ).maybeSingle();
-            if (result != null && result['success'] == true) {
-              matchedChild = child;
-              break;
-            }
-          } catch (_) {
-            // RPC not available, fall back to hash comparison
-            continue;
-          }
-        }
-      }
-
-      // Fallback: if RPC failed, try direct hash match (for dev/demo purposes)
-      if (matchedChild == null) {
-        for (final child in children) {
-          final storedHash = child['pin_hash'] as String?;
-          // Simple direct comparison — only works if PIN was stored as plaintext (dev only)
-          // In production, this will only match if the hash happens to equal the plaintext
-          if (storedHash != null && storedHash.isNotEmpty) {
-            // Accept if storedHash equals the input (dev mode) OR if we can't verify
-            // Remove this fallback in production — always use RPC
-            if (storedHash == pin) {
-              matchedChild = child;
-              break;
-            }
-          }
+        final result = await Supabase.instance.client.rpc(
+          'verify_child_pin',
+          params: {
+            'p_child_id': child['id'] as String,
+            'p_pin': pin,
+          },
+        ).maybeSingle();
+        if (result != null && result['success'] == true) {
+          matchedChild = child;
+          break;
         }
       }
 

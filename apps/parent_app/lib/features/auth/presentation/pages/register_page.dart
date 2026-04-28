@@ -184,18 +184,13 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             name: _nameController.text.trim(),
           );
 
-      // After sign up, upsert parent profile with name and phone
+      // Trigger on_auth_user_created handles name + email insertion into parent_profiles.
+      // Here we only update phone (optional) to avoid double-writing name/email.
       final user = Supabase.instance.client.auth.currentUser;
-      if (user != null) {
-        await Supabase.instance.client.from('parent_profiles').upsert({
-          'id': user.id,
-          'name': _nameController.text.trim(),
-          'email': _emailController.text.trim(),
-          'phone': _phoneController.text.trim().isNotEmpty
-              ? _phoneController.text.trim()
-              : null,
-          'created_at': DateTime.now().toIso8601String(),
-        });
+      if (user != null && _phoneController.text.trim().isNotEmpty) {
+        await Supabase.instance.client.from('parent_profiles').update({
+          'phone': _phoneController.text.trim(),
+        }).eq('id', user.id);
       }
 
       if (mounted) {
