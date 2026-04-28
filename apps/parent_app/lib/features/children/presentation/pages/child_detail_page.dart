@@ -129,10 +129,10 @@ class _ChildDetailPageState extends ConsumerState<ChildDetailPage> {
           label: 'Tanggal Lahir',
           value: '${child.birthDate.day}/${child.birthDate.month}/${child.birthDate.year}',
         ),
-        _InfoTile(
+        const _InfoTile(
           icon: Icons.check_circle_outline,
           label: 'Status',
-          value: child.isActive ? 'Aktif' : 'Nonaktif',
+          value: 'Aktif',
         ),
         const SizedBox(height: 32),
         // Action buttons
