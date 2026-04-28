@@ -7,5 +7,7 @@ abstract class IAppRestrictionRepository {
   Future<(bool, Failure?)> deleteRestriction(String restrictionId);
   Future<(List<Schedule>?, Failure?)> getSchedules(String childId);
   Future<(Schedule?, Failure?)> saveSchedule(Schedule schedule);
+  Future<(Schedule?, Failure?)> updateSchedule(Schedule schedule);
+  Future<(Schedule?, Failure?)> createSchedule(Schedule schedule);
   Future<(bool, Failure?)> deleteSchedule(String scheduleId);
 }
