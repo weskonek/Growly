@@ -16,6 +16,7 @@ class ChildProfile {
   final DateTime? updatedAt;
   final String? pin;
   final Map<String, dynamic> settings;
+  final bool safeModeEnabled;
 
   const ChildProfile({
     required this.id,
@@ -28,6 +29,7 @@ class ChildProfile {
     this.updatedAt,
     this.pin,
     this.settings = const {},
+    this.safeModeEnabled = false,
   });
 
   factory ChildProfile.fromJson(Map<String, dynamic> json) {
@@ -44,6 +46,7 @@ class ChildProfile {
           : null,
       pin: json['pin'] as String?,
       settings: (json['settings'] as Map<String, dynamic>?) ?? {},
+      safeModeEnabled: json['safe_mode_enabled'] as bool? ?? false,
     );
   }
 
@@ -58,6 +61,7 @@ class ChildProfile {
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
       'settings': settings,
+      'safe_mode_enabled': safeModeEnabled,
     };
   }
 
@@ -98,6 +102,7 @@ class ChildProfile {
     DateTime? updatedAt,
     String? pin,
     Map<String, dynamic>? settings,
+    bool? safeModeEnabled,
   }) {
     return ChildProfile(
       id: id ?? this.id,
@@ -110,6 +115,7 @@ class ChildProfile {
       updatedAt: updatedAt ?? this.updatedAt,
       pin: pin ?? this.pin,
       settings: settings ?? this.settings,
+      safeModeEnabled: safeModeEnabled ?? this.safeModeEnabled,
     );
   }
 }

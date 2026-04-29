@@ -17,6 +17,8 @@ import '../../features/parental_control/presentation/pages/safe_mode_page.dart';
 import '../../features/parental_control/presentation/pages/location_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
 import '../../features/settings/presentation/pages/subscription_page.dart';
+import '../../features/settings/presentation/pages/help_page.dart';
+import '../../features/settings/presentation/pages/privacy_page.dart';
 import '../../features/notifications/presentation/pages/notifications_page.dart';
 import 'package:growly_core/growly_core.dart' show authStateChangesProvider;
 
@@ -144,6 +146,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 path: 'subscription',
                 name: 'subscription',
                 builder: (context, state) => const SubscriptionPage(),
+              ),
+              GoRoute(
+                path: 'help',
+                name: 'help',
+                builder: (context, state) => const HelpPage(),
+              ),
+              GoRoute(
+                path: 'privacy',
+                name: 'privacy',
+                builder: (context, state) => const PrivacyPage(),
               ),
             ],
           ),

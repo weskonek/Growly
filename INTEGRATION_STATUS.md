@@ -324,6 +324,60 @@
 
 ---
 
+## BAGIAN 6 — ENFORCEMENT LOOP (Child App)
+
+### 6.1 App Restriction Enforcement Loop
+| Item | Status | Notes |
+|---|---|---|
+| Parent lock → DB | ✅ | `app_restrictions` table, `AppLockPage` writes via `AppRestrictionRepositoryImpl` |
+| DB → SharedPrefs | ✅ | `ParentalControlSyncService` subscribes realtime + calls `lockApp`/`unlockApp` via MethodChannel |
+| SharedPrefs → AccessibilityService | ⚠️ | GrowlyAccessibilityService reads `locked_apps` from SharedPrefs — native Android side |
+| Enforcement loop closed | ✅ | `parental_control_sync_service.dart` bridges DB → MethodChannel |
+
+### 6.2 Screen Time Upload
+| Item | Status | Notes |
+|---|---|---|
+| `devices` table | ✅ | `devices` table with RLS scoped to child via parent_id |
+| `notifications` table | ✅ | `notifications` table with RLS |
+| `screen_time_records` UNIQUE constraint | ✅ | `screen_time_records_unique_child_app_date` |
+| Native MethodChannel `getScreenTimeByApp` | ✅ | Already in `MainActivity.kt` |
+| `ScreenTimeUploadService` | ✅ | `screen_time_upload_service.dart` — uploads every 15 min via Timer + on app pause |
+| Parent dashboard reads DB | ✅ | `dashboardStatsProvider` reads from `screen_time_records` |
+
+### 6.3 Permission Guard (Defense in Depth)
+| Item | Status | Notes |
+|---|---|---|
+| `isAccessibilityEnabled` Kotlin method | ✅ | Added to `MainActivity.kt` |
+| `PermissionGuardService` | ✅ | `permission_guard_service.dart` — periodic check, parent notification, blocking dialog |
+| Fullscreen blocking dialog | ✅ | `_AccessibilityBlockingScreen` shown when accessibility disabled |
+| Periodic permission check | ✅ | 30-second timer via `Timer.periodic` + `WidgetsBindingObserver.didChangeAppLifecycleState` |
+| Parent alert notification | ✅ | Inserts `type: 'alert'` notification to parent when disabled detected |
+| `openAccessibilitySettings` bridge | ✅ | Already in `MainActivity.kt` |
+
+---
+
+## NEW FILES CREATED (Session 2026-04-29)
+
+| File | Purpose |
+|---|---|
+| `apps/child_app/lib/core/services/screen_time_upload_service.dart` | Uploads UsageStats to Supabase every 15 min |
+| `apps/child_app/lib/core/services/parental_control_sync_service.dart` | Syncs app_restrictions DB → device SharedPrefs |
+| `apps/child_app/lib/core/services/permission_guard_service.dart` | Monitors Android permissions, alerts parent |
+| `apps/child_app/lib/core/services/services_providers.dart` | Riverpod providers for all 3 services |
+| `apps/parent_app/lib/core/services/` (new) | N/A |
+| `packages/growly_core/lib/domain/models/notification_model.dart` | Notification data model |
+| `packages/growly_core/lib/domain/models/device_model.dart` | Device data model |
+| `packages/growly_core/lib/shared/providers/notification_providers.dart` | Notification providers + repo |
+| `packages/growly_core/lib/data/repositories/device_repository_impl.dart` | Device repository |
+| `apps/parent_app/lib/features/notifications/presentation/pages/notifications_page.dart` | Notification list page |
+| `apps/parent_app/lib/features/settings/presentation/pages/help_page.dart` | Help/FAQ page |
+| `apps/parent_app/lib/features/settings/presentation/pages/privacy_page.dart` | Privacy settings page |
+| `apps/parent_app/lib/features/parental_control/presentation/pages/safe_mode_page.dart` | Safe mode with whitelist management |
+| `apps/parent_app/lib/features/parental_control/presentation/pages/location_page.dart` | Device management |
+| `backend/supabase/migrations/` | `notifications` table, `devices` table, `safe_mode_enabled` column, `screen_time_records` UNIQUE constraint |
+
+---
+
 ## MIGRATION STATUS
 
 | Migration | Applied | Notes |

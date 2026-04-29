@@ -197,6 +197,12 @@ class _AddChildPageState extends ConsumerState<AddChildPage> {
                 prefixIcon: Icon(Icons.pin_outlined),
                 helperText: '4-6 digit untuk anak masuk app',
               ),
+              validator: (v) {
+                if (v == null || v.isEmpty) return null;
+                if (v.length < 4) return 'PIN minimal 4 digit';
+                if (!RegExp(r'^\d+$').hasMatch(v)) return 'PIN hanya angka';
+                return null;
+              },
             ),
             const SizedBox(height: 32),
             FilledButton(

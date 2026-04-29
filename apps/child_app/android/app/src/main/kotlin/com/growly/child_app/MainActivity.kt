@@ -100,6 +100,9 @@ class MainActivity : FlutterActivity() {
                     openAccessibilitySettings()
                     result.success(null)
                 }
+                "isAccessibilityEnabled" -> {
+                    result.success(isAccessibilityEnabled())
+                }
 
                 else -> result.notImplemented()
             }
@@ -272,5 +275,13 @@ class MainActivity : FlutterActivity() {
         val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
         startActivity(intent)
+    }
+
+    private fun isAccessibilityEnabled(): Boolean {
+        val enabledServices = Settings.Secure.getString(
+            contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        ) ?: ""
+        return enabledServices.contains(packageName)
     }
 }

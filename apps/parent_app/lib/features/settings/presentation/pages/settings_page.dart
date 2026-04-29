@@ -146,7 +146,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 leading: const Icon(Icons.notifications_outlined),
                 title: const Text('Notifikasi'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () {},
+                onTap: () => context.go('/notifications'),
               ),
 
               // Help
@@ -154,7 +154,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 leading: const Icon(Icons.help_outline),
                 title: const Text('Bantuan'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () {},
+                onTap: () => context.go('/settings/help'),
               ),
 
               // Privacy
@@ -162,7 +162,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 leading: const Icon(Icons.privacy_tip_outlined),
                 title: const Text('Privasi & Keamanan'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () {},
+                onTap: () => context.go('/settings/privacy'),
               ),
 
               const Divider(),

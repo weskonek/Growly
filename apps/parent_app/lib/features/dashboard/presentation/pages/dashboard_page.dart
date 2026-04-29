@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:growly_core/growly_core.dart';
+import 'package:growly_core/growly_core.dart' hide Badge;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:parent_app/features/children/providers/child_providers.dart';
 import 'package:parent_app/features/dashboard/providers/dashboard_providers.dart';
-import 'package:growly_core/growly_core.dart' show unreadNotificationCountProvider;
 
 class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key});
@@ -54,7 +53,24 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       appBar: AppBar(
         title: const Text('Dashboard'),
         actions: [
-          IconButton(icon: const Icon(Icons.notifications_outlined), onPressed: () {}),
+          Consumer(
+            builder: (context, ref, _) {
+              final unreadAsync = ref.watch(unreadNotificationCountProvider);
+              return IconButton(
+                icon: unreadAsync.when(
+                  data: (count) => count > 0
+                      ? Badge(
+                          label: Text(count > 99 ? '99+' : '$count'),
+                          child: const Icon(Icons.notifications_outlined),
+                        )
+                      : const Icon(Icons.notifications_outlined),
+                  loading: () => const Icon(Icons.notifications_outlined),
+                  error: (_, __) => const Icon(Icons.notifications_outlined),
+                ),
+                onPressed: () => context.go('/notifications'),
+              );
+            },
+          ),
         ],
       ),
       body: RefreshIndicator(

@@ -39,9 +39,6 @@ final canAddChildProvider =
   return CanAddChildNotifier();
 });
 
-final childRepositoryProvider = Provider<IChildRepository>((ref) {
-  return ChildRepositoryImpl(Supabase.instance.client);
-});
 
 /// Upgrade subscription notifier — calls upgrade_subscription RPC
 class UpgradeSubscriptionNotifier extends AsyncNotifier<SubscriptionModel?> {

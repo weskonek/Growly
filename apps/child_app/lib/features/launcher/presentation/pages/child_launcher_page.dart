@@ -6,6 +6,7 @@ import 'package:growly_core/growly_core.dart' hide currentChildProvider;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:child_app/features/launcher/providers/launcher_providers.dart';
 import 'package:child_app/core/router/child_router.dart';
+import 'package:child_app/core/services/services_providers.dart';
 
 class ChildLauncherPage extends ConsumerStatefulWidget {
   const ChildLauncherPage({super.key});
@@ -14,18 +15,76 @@ class ChildLauncherPage extends ConsumerStatefulWidget {
   ConsumerState<ChildLauncherPage> createState() => _ChildLauncherPageState();
 }
 
-class _ChildLauncherPageState extends ConsumerState<ChildLauncherPage> {
+class _ChildLauncherPageState extends ConsumerState<ChildLauncherPage>
+    with WidgetsBindingObserver {
   RealtimeConnectionStatus _connectionStatus = RealtimeConnectionStatus.connecting;
   RealtimeChannel? _syncChannel;
+  bool _showAccessibilityBlock = false;
+  Timer? _accessibilityCheckTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _accessibilityCheckTimer?.cancel();
     _syncChannel?.unsubscribe();
+    // Stop all sync services on unmount
+    ref.read(parentalControlSyncServiceProvider).stopSync();
+    ref.read(screenTimeUploadServiceProvider).stopPeriodicUpload();
+    ref.read(permissionGuardServiceProvider).stopGuarding();
     super.dispose();
   }
 
-  void _subscribeToChildSync(String childId) {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkAccessibility();
+    }
+    if (state == AppLifecycleState.paused) {
+      _accessibilityCheckTimer?.cancel();
+      // Upload screen time when app goes to background
+      _uploadScreenTimeOnPause();
+    }
+  }
+
+  void _uploadScreenTimeOnPause() {
+    final childId = ref.read(verifiedChildIdProvider);
+    if (childId != null) {
+      ref.read(screenTimeUploadServiceProvider).uploadNow(childId);
+    }
+  }
+
+  Future<void> _checkAccessibility() async {
+    final guard = ref.read(permissionGuardServiceProvider);
+    final enabled = await guard.checkAccessibilityEnabled();
+    if (mounted && !enabled) {
+      setState(() => _showAccessibilityBlock = true);
+    } else if (mounted && enabled) {
+      setState(() => _showAccessibilityBlock = false);
+    }
+  }
+
+  void _subscribeToChildSync(String childId, String parentId) {
     _syncChannel?.unsubscribe();
+
+    // Start all services for this child
+    ref.read(parentalControlSyncServiceProvider).startSync(childId);
+    ref.read(screenTimeUploadServiceProvider).startPeriodicUpload(childId);
+    ref.read(permissionGuardServiceProvider).startGuarding(childId, parentId);
+
+    // Initial accessibility check
+    _checkAccessibility();
+    // Periodic check every 30s
+    _accessibilityCheckTimer?.cancel();
+    _accessibilityCheckTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _checkAccessibility(),
+    );
 
     final client = Supabase.instance.client;
     _syncChannel = client
@@ -40,7 +99,11 @@ class _ChildLauncherPageState extends ConsumerState<ChildLauncherPage> {
             value: childId,
           ),
           callback: (_) {
-            if (mounted) ref.invalidate(activeScheduleProvider);
+            if (mounted) {
+              ref.invalidate(activeScheduleProvider);
+              // Force immediate sync of restrictions to device
+              ref.read(parentalControlSyncServiceProvider).forceSync();
+            }
           },
         )
         .onPostgresChanges(
@@ -84,11 +147,20 @@ class _ChildLauncherPageState extends ConsumerState<ChildLauncherPage> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    // Block entire UI if accessibility is disabled
+    if (_showAccessibilityBlock) {
+      return _AccessibilityBlockingScreen(
+        onOpenSettings: () {
+          ref.read(permissionGuardServiceProvider).openAccessibilitySettings();
+        },
+        onRetry: _checkAccessibility,
+      );
+    }
+
     final childAsync = ref.watch(currentChildProvider);
 
     return Scaffold(
-      backgroundColor: cs.primaryContainer,
+      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -97,10 +169,12 @@ class _ChildLauncherPageState extends ConsumerState<ChildLauncherPage> {
             error: (e, _) => Center(child: Text('Error: $e')),
             data: (child) {
               if (child == null) {
-                return _PinGate(onVerified: (childId) {
-                  ref.invalidate(currentChildProvider);
-                  _subscribeToChildSync(childId);
-                });
+                return _PinGate(
+                  onVerified: (childId, parentId) {
+                    ref.invalidate(currentChildProvider);
+                    _subscribeToChildSync(childId, parentId);
+                  },
+                );
               }
               return _LauncherContent(
                 child: child,
@@ -115,6 +189,65 @@ class _ChildLauncherPageState extends ConsumerState<ChildLauncherPage> {
   }
 }
 
+class _AccessibilityBlockingScreen extends StatelessWidget {
+  final VoidCallback onOpenSettings;
+  final VoidCallback onRetry;
+
+  const _AccessibilityBlockingScreen({
+    required this.onOpenSettings,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.shield_outlined, size: 80, color: Colors.orange),
+                const SizedBox(height: 24),
+                Text(
+                  'Izin Diperlukan',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Layanan Aksesibilitas Growly harus aktif agar aplikasi bisa digunakan.\n\nMatikan fitur ini akan membatasi akses anak ke aplikasi yang tidak disetujui orang tua.',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: Colors.grey.shade700,
+                        height: 1.5,
+                      ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
+                FilledButton.icon(
+                  onPressed: onOpenSettings,
+                  icon: const Icon(Icons.settings),
+                  label: const Text('Buka Pengaturan Aksesibilitas'),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton(
+                  onPressed: onRetry,
+                  child: const Text('Coba Lagi'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 enum RealtimeConnectionStatus {
   connecting,
   connected,
@@ -122,7 +255,7 @@ enum RealtimeConnectionStatus {
 }
 
 class _PinGate extends ConsumerStatefulWidget {
-  final void Function(String childId) onVerified;
+  final void Function(String childId, String parentId) onVerified;
 
   const _PinGate({required this.onVerified});
 
@@ -153,7 +286,7 @@ class _PinGateState extends ConsumerState<_PinGate> {
     try {
       final children = await Supabase.instance.client
           .from('child_profiles')
-          .select('id, name')
+          .select('id, name, parent_id')
           .eq('is_active', true)
           .not('pin_hash', 'is', null);
 
@@ -173,8 +306,10 @@ class _PinGateState extends ConsumerState<_PinGate> {
       }
 
       if (matchedChild != null && mounted) {
-        ref.read(verifiedChildIdProvider.notifier).state = matchedChild['id'] as String;
-        widget.onVerified(matchedChild['id'] as String);
+        final childId = matchedChild['id'] as String;
+        final parentId = matchedChild['parent_id'] as String;
+        ref.read(verifiedChildIdProvider.notifier).state = childId;
+        widget.onVerified(childId, parentId);
       } else if (mounted) {
         setState(() => _error = 'PIN salah. Coba lagi ya!');
       }
@@ -192,11 +327,14 @@ class _PinGateState extends ConsumerState<_PinGate> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text('🔒', style: const TextStyle(fontSize: 64)),
+          const Text('🔒', style: TextStyle(fontSize: 64)),
           const SizedBox(height: 16),
           Text('Masukkan PIN', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 8),
-          Text('untuk masuk ke akun Growly kamu', style: TextStyle(color: cs.onSurfaceVariant)),
+          Text(
+            'untuk masuk ke akun Growly kamu',
+            style: TextStyle(color: cs.onSurfaceVariant),
+          ),
           const SizedBox(height: 24),
           SizedBox(
             width: 200,
@@ -218,7 +356,11 @@ class _PinGateState extends ConsumerState<_PinGate> {
           FilledButton(
             onPressed: _isLoading ? null : _verify,
             child: _isLoading
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : const Text('Masuk'),
           ),
           const SizedBox(height: 16),
@@ -301,9 +443,7 @@ class _LauncherContent extends ConsumerWidget {
             : remaining <= 30
                 ? 'Hampir habis'
                 : 'OK';
-    final statusColor = isBlocked
-        ? Colors.grey.shade400
-        : timeColor;
+    final statusColor = isBlocked ? Colors.grey.shade400 : timeColor;
 
     return Column(
       children: [
@@ -331,7 +471,10 @@ class _LauncherContent extends ConsumerWidget {
                 CircleAvatar(
                   radius: 28,
                   backgroundColor: cs.primary,
-                  child: Text(child.avatarUrl ?? '👦', style: const TextStyle(fontSize: 28)),
+                  child: Text(
+                    child.avatarUrl ?? '👦',
+                    style: const TextStyle(fontSize: 28),
+                  ),
                 ),
               ],
             ),
@@ -477,7 +620,13 @@ class _LauncherCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: disabled
               ? null
-              : [BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 12, offset: const Offset(0, 4))],
+              : [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.4),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

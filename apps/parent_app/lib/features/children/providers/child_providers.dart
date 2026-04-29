@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:growly_core/growly_core.dart';
-import '../../../../core/providers/subscription_provider.dart' hide childRepositoryProvider;
+import '../../../../core/providers/subscription_provider.dart';
 
 /// Re-export children providers from growly_core for parent app feature usage
 export 'package:growly_core/shared/providers/child_providers.dart'
