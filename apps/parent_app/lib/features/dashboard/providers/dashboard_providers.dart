@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:growly_core/growly_core.dart';
 import '../../children/providers/child_providers.dart';
+import '../../children/providers/child_activity_providers.dart';
 
 /// Today's screen time for a child (aggregated minutes)
 final todayScreenTimeProvider =
@@ -84,6 +85,52 @@ final riskIndicatorsProvider = FutureProvider<List<String>>((ref) async {
     }
   }
   return risks;
+});
+
+/// Aggregated dashboard AI insights — up to 2 insights per child, max 5 total
+final dashboardInsightsProvider =
+    FutureProvider<List<({String childName, String childId, ChildInsight insight})>>((ref) async {
+  final childrenAsync = ref.watch(childrenListProvider);
+  final children = childrenAsync.valueOrNull ?? [];
+  if (children.isEmpty) return [];
+
+  const engine = ChildInsightEngine();
+  final results =
+      <({String childName, String childId, ChildInsight insight})>[];
+
+  for (final child in children) {
+    final weekly = await ref.read(screenTimeLast7Provider(child.id).future);
+    final sessions =
+        await ref.read(learningSessionsLast7Provider(child.id).future);
+    final progress =
+        await ref.read(childLearningProgressProvider(child.id).future);
+
+    final avgDaily = weekly.days.isEmpty
+        ? 0
+        : weekly.totalMinutes ~/ weekly.days.length;
+    final completedLessons = progress.where((p) => p.completed).length;
+
+    final insights = engine.analyze(
+      avgDailyMinutes: avgDaily,
+      totalMinutes7Days: weekly.totalMinutes,
+      daysWithData: weekly.days.length,
+      appBreakdown: weekly.appBreakdown,
+      learningSessionsCount: sessions.length,
+      completedLessons: completedLessons,
+    );
+
+    for (final insight in insights.take(2)) {
+      results.add((
+        childName: child.name,
+        childId: child.id,
+        insight: insight,
+      ));
+    }
+  }
+
+  // Sort by priority and take top 5
+  results.sort((a, b) => b.insight.priority.compareTo(a.insight.priority));
+  return results.take(5).toList();
 });
 
 /// Weekly screen time for a child (last 7 days)
