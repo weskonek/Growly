@@ -5,6 +5,7 @@ import 'package:growly_core/growly_core.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:parent_app/features/children/providers/child_providers.dart';
 import 'package:parent_app/features/dashboard/providers/dashboard_providers.dart';
+import 'package:growly_core/growly_core.dart' show unreadNotificationCountProvider;
 
 class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key});
