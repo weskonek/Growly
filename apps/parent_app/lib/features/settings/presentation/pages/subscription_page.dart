@@ -3,11 +3,29 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:growly_core/growly_core.dart';
 import '../../../../core/providers/subscription_provider.dart';
 
-class SubscriptionPage extends ConsumerWidget {
+class SubscriptionPage extends ConsumerStatefulWidget {
   const SubscriptionPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SubscriptionPage> createState() => _SubscriptionPageState();
+}
+
+class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
+  Future<void> _showUpgradeSheet() async {
+    final sub = ref.read(subscriptionProvider).valueOrNull;
+    final tier = sub?.tier ?? SubscriptionTier.free;
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => _UpgradeBottomSheet(currentTier: tier),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final subAsync = ref.watch(subscriptionProvider);
     final cs = Theme.of(context).colorScheme;
 
@@ -25,59 +43,193 @@ class SubscriptionPage extends ConsumerWidget {
               const SizedBox(height: 24),
               _ComparisonTable(currentTier: tier),
               const SizedBox(height: 24),
-              if (tier == SubscriptionTier.free) _buildUpgradeSection(context),
+              if (tier == SubscriptionTier.free)
+                FilledButton(
+                  onPressed: _showUpgradeSheet,
+                  child: const Text('Upgrade ke Premium Family'),
+                ),
             ],
           );
         },
       ),
     );
   }
+}
 
-  Widget _buildUpgradeSection(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        FilledButton(
-          onPressed: () => _showUpgradeDialog(context),
-          child: const Text('Upgrade ke Premium Family'),
+class _UpgradeBottomSheet extends StatelessWidget {
+  final SubscriptionTier currentTier;
+
+  const _UpgradeBottomSheet({required this.currentTier});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return DraggableScrollableSheet(
+      initialChildSize: 0.7,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (ctx, scrollController) => SingleChildScrollView(
+        controller: scrollController,
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Center(
+                child: Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade100,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Icon(Icons.star, size: 40, color: Colors.amber),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Upgrade Premium Family',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Buka semua fitur tanpa batas untuk keluarga Anda',
+                style: TextStyle(color: cs.onSurfaceVariant),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 28),
+              // Feature list
+              _PlanFeatureItem(
+                emoji: '👶',
+                title: 'Anak Tanpa Batas',
+                desc: 'Tambahkan profil anak tanpa batas.',
+              ),
+              _PlanFeatureItem(
+                emoji: '🤖',
+                title: 'AI Tutor Tanpa Batas',
+                desc: 'Belajar dengan bantuan AI tanpa batasan.',
+              ),
+              _PlanFeatureItem(
+                emoji: '📊',
+                title: 'Laporan Lengkap',
+                desc: 'Lacak progress belajar anak setiap hari.',
+              ),
+              _PlanFeatureItem(
+                emoji: '🛡️',
+                title: 'Kontrol Orang Tua Lengkap',
+                desc: 'Mode sekolah, kunci aplikasi, & lokasi.',
+              ),
+              const SizedBox(height: 32),
+              // Pricing card
+              Card(
+                color: cs.primaryContainer,
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Rp',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: cs.onPrimaryContainer,
+                            ),
+                          ),
+                          Text(
+                            '99.000',
+                            style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                                  fontWeight: FontWeight.w900,
+                                  color: cs.onPrimaryContainer,
+                                ),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        '/bulan per keluarga',
+                        style: TextStyle(color: cs.onPrimaryContainer.withValues(alpha: 0.7)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              FilledButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Hubungi growly@app.com untuk upgrade manual.'),
+                    ),
+                  );
+                },
+                child: const Text('Hubungi untuk Upgrade'),
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Nanti dulu'),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
         ),
-        const SizedBox(height: 12),
-        Text(
-          'Hubungi kami untuk upgrade manual sementara sampai payment gateway aktif.',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.grey[600], fontSize: 12),
-        ),
-      ],
+      ),
     );
   }
+}
 
-  Future<void> _showUpgradeDialog(BuildContext context) async {
-    await showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Upgrade ke Premium Family'),
-        content: const Text(
-          'Premium Family memberi Anda:\n\n'
-          '• Anak tanpa batas\n'
-          '• AI Tutor tanpa batas\n'
-          '• Semua fitur parental control\n\n'
-          'Hubungi tim Growly untuk upgrade manual untuk saat ini.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Tutup'),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Silakan hubungi growly@app.com untuk upgrade.'),
+class _PlanFeatureItem extends StatelessWidget {
+  final String emoji;
+  final String title;
+  final String desc;
+
+  const _PlanFeatureItem({
+    required this.emoji,
+    required this.title,
+    required this.desc,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 28)),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                 ),
-              );
-            },
-            child: const Text('Hubungi Kami'),
+                Text(
+                  desc,
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                ),
+              ],
+            ),
           ),
         ],
       ),

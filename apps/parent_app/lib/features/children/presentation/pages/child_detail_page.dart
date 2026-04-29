@@ -164,6 +164,12 @@ class _ChildDetailPageState extends ConsumerState<ChildDetailPage> {
           label: const Text('Ganti PIN Anak'),
         ),
         const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: () => _showResetPinDialog(child),
+          icon: const Icon(Icons.lock_reset),
+          label: const Text('Reset PIN Anak'),
+        ),
+        const SizedBox(height: 12),
         DestructiveButton(
           label: 'Hapus Profil',
           onPressed: () => _confirmDelete(child),
@@ -300,6 +306,42 @@ class _ChildDetailPageState extends ConsumerState<ChildDetailPage> {
         content: Text(message),
         backgroundColor: success ? null : Colors.red,
       ),
+    );
+  }
+
+  Future<void> _showResetPinDialog(ChildProfile child) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Reset PIN?'),
+        content: Text(
+          'PIN ${child.name} akan direset ke 0000. Anak perlu membuat PIN baru.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.orange),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Reset PIN'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final result = await Supabase.instance.client.rpc('reset_child_pin', params: {
+      'p_child_id': child.id,
+    });
+
+    if (!mounted) return;
+    final success = result?[0]?['success'] == true || result?['success'] == true;
+    final message = result?[0]?['message'] ?? result?['message'] ?? (success ? 'PIN direset' : 'Gagal reset PIN');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
     );
   }
 }

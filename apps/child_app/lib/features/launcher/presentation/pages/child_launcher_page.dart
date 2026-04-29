@@ -144,7 +144,46 @@ class _PinGateState extends ConsumerState<_PinGate> {
                 ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                 : const Text('Masuk'),
           ),
+          const SizedBox(height: 16),
+          TextButton(
+            onPressed: () => _showForgotPinSheet(context),
+            child: const Text('Lupa PIN?'),
+          ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _showForgotPinSheet(BuildContext context) async {
+    await showModalBottomSheet(
+      context: context,
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('🔑', style: TextStyle(fontSize: 48)),
+            const SizedBox(height: 16),
+            Text(
+              'Lupa PIN?',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Minta orang tua reset PIN kamu di aplikasi Growly Parent.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 15),
+            ),
+            const SizedBox(height: 24),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Tutup'),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
       ),
     );
   }

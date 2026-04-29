@@ -45,8 +45,15 @@ class _AddChildPageState extends ConsumerState<AddChildPage> {
       ref.invalidate(canAddChildProvider);
     });
 
+    // Listen for limit reached → redirect to upgrade banner instead of error
     ref.listen(createChildProvider, (prev, next) {
       if (next.hasError && (prev == null || !prev.hasError)) {
+        final msg = '${next.error}'.toLowerCase();
+        if (msg.contains('limit') || msg.contains('batas') || msg.contains('child_limit')) {
+          // DB trigger fired — show upgrade banner instead of error
+          ref.invalidate(canAddChildProvider);
+          return;
+        }
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Gagal: ${next.error}'), backgroundColor: Colors.red),

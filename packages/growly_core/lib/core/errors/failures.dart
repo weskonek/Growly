@@ -17,6 +17,8 @@ sealed class Failure {
       return message;
     } else if (this is ServerFailure) {
       return message;
+    } else if (this is ChildLimitFailure) {
+      return message;
     }
     return 'Terjadi kesalahan. Silakan coba lagi.';
   }
@@ -53,4 +55,8 @@ class DatabaseFailure extends Failure {
 
 class UnknownFailure extends Failure {
   const UnknownFailure({required String message}) : super(message: message);
+}
+
+class ChildLimitFailure extends Failure {
+  const ChildLimitFailure({required super.message});
 }

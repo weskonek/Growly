@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:growly_core/growly_core.dart';
+import 'package:growly_core/growly_core.dart' hide childrenListProvider;
+import 'package:growly_core/shared/providers/child_providers.dart' show childrenListProvider;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'auth_provider.dart';
 
@@ -23,13 +24,13 @@ class CanAddChildNotifier extends AsyncNotifier<bool> {
     if (user == null) return false;
 
     final repo = ref.read(subscriptionRepoProvider);
-    final (limit, failure) = await repo.getChildLimit(user.id);
-    if (failure != null) return false;
+    final (sub, _) = await repo.getSubscription(user.id);
+    final tier = sub?.tier ?? SubscriptionTier.free;
+    final limit = tier.childLimit;
 
-    final childRepo = ref.read(childRepositoryProvider);
-    final (children, _) = await childRepo.getChildren(user.id);
-    final current = children?.length ?? 0;
-    return current < limit;
+    final childrenAsync = ref.watch(childrenListProvider);
+    final children = childrenAsync.valueOrNull ?? [];
+    return children.length < limit;
   }
 }
 
