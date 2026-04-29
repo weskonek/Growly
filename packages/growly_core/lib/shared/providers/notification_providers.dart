@@ -10,7 +10,7 @@ abstract class INotificationRepository {
   Future<(NotificationModel?, Failure?)> markAsRead(String notificationId);
   Future<(int, Failure?)> getUnreadCount(String parentId);
   Future<(bool, Failure?)> markAllAsRead(String parentId);
-  Future<(Failure?)> deleteNotification(String notificationId);
+  Future<Failure?> deleteNotification(String notificationId);
 }
 
 /// Supabase implementation
@@ -56,12 +56,13 @@ class NotificationRepositoryImpl implements INotificationRepository {
   @override
   Future<(int, Failure?)> getUnreadCount(String parentId) async {
     try {
-      final result = await _client
+      final response = await _client
           .from('notifications')
-          .select('id', count: CountOption.exact)
+          .select()
           .eq('parent_id', parentId)
-          .eq('is_read', false);
-      final count = result.count as int? ?? 0;
+          .eq('is_read', false)
+          .count(CountOption.exact);
+      final count = response.count;
       return (count, null);
     } catch (e) {
       return (0, DatabaseFailure(message: e.toString()));
@@ -83,12 +84,12 @@ class NotificationRepositoryImpl implements INotificationRepository {
   }
 
   @override
-  Future<(Failure?)> deleteNotification(String notificationId) async {
+  Future<Failure?> deleteNotification(String notificationId) async {
     try {
       await _client.from('notifications').delete().eq('id', notificationId);
-      return (null);
+      return null;
     } catch (e) {
-      return (DatabaseFailure(message: e.toString()));
+      return DatabaseFailure(message: e.toString());
     }
   }
 }
