@@ -253,31 +253,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   ),
             ),
             const SizedBox(height: 12),
-            Card(
-              color: cs.primaryContainer,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.auto_awesome, color: cs.primary, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Insight Mingguan',
-                          style: TextStyle(fontWeight: FontWeight.w700, color: cs.primary),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Pantausan pola belajar anak setiap minggu untuk insight yang lebih personal.',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ],
-                ),
-              ),
+            _DashboardInsightsSection(
+              insightsAsync: ref.watch(dashboardInsightsProvider),
+              onRefresh: () => ref.invalidate(dashboardInsightsProvider),
             ),
           ],
         ),
