@@ -27,20 +27,22 @@ final dashboardStatsProvider = FutureProvider<Map<String, dynamic>>((ref) async 
   final childrenAsync = ref.watch(childrenListProvider);
   final children = childrenAsync.valueOrNull ?? [];
 
+  // Read providers once outside the loop — ref.watch inside async loops causes unnecessary rebuilds
+  final stRepo = ref.read(screenTimeRepositoryProvider);
+  final lrRepo = ref.read(learningRepositoryProvider);
+  final br = ref.read(badgeRepositoryProvider);
+
   int totalScreenMinutes = 0;
   int totalSessions = 0;
   int totalBadges = 0;
 
   for (final child in children) {
-    final stRepo = ref.watch(screenTimeRepositoryProvider);
     final (st, _) = await stRepo.getDailyScreenTime(child.id, DateTime.now());
     totalScreenMinutes += st?.totalMinutes ?? 0;
 
-    final lrRepo = ref.watch(learningRepositoryProvider);
     final (stats, _) = await lrRepo.getStats(child.id);
     totalSessions += (stats?['totalSessions'] as int? ?? 0);
 
-    final br = ref.watch(badgeRepositoryProvider);
     final (badges, _) = await br.getBadges(child.id);
     totalBadges += badges?.length ?? 0;
   }
@@ -60,14 +62,17 @@ final riskIndicatorsProvider = FutureProvider<List<String>>((ref) async {
 
   final childrenAsync = ref.watch(childrenListProvider);
   final children = childrenAsync.valueOrNull ?? [];
+
+  // Read providers once outside the loop — ref.watch inside async loops causes unnecessary rebuilds
+  final stRepo = ref.read(screenTimeRepositoryProvider);
+  final lrRepo = ref.read(learningRepositoryProvider);
+
   final risks = <String>[];
 
   for (final child in children) {
-    final stRepo = ref.watch(screenTimeRepositoryProvider);
     final (st, _) = await stRepo.getDailyScreenTime(child.id, DateTime.now());
     final screenMinutes = st?.totalMinutes ?? 0;
 
-    final lrRepo = ref.watch(learningRepositoryProvider);
     final (stats, _) = await lrRepo.getStats(child.id);
     final learningMinutes = stats?['learningMinutes'] as int? ?? 0;
 
