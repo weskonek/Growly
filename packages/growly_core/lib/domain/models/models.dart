@@ -1,3 +1,4 @@
+export 'child_insight.dart';
 export 'child_profile.dart';
 export 'learning_progress.dart';
 export 'screen_time.dart';

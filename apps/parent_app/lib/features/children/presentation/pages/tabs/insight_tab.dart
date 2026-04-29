@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:growly_core/growly_core.dart';
 import '../../../providers/child_activity_providers.dart';
 
 class InsightTab extends ConsumerWidget {
   final String childId;
 
   const InsightTab({super.key, required this.childId});
+
+  static const _engine = ChildInsightEngine();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -24,14 +27,30 @@ class InsightTab extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (weekly) {
-          final insights = _generateInsights(weekly, sessionsAsync, progressAsync);
+          final sessions = sessionsAsync.valueOrNull ?? [];
+          final progress = progressAsync.valueOrNull ?? [];
+          final completedLessons = progress.where((p) => p.completed).length;
+
+          final avgDaily = weekly.days.isEmpty
+              ? 0
+              : weekly.totalMinutes ~/ weekly.days.length;
+
+          final insights = _engine.analyze(
+            avgDailyMinutes: avgDaily,
+            totalMinutes7Days: weekly.totalMinutes,
+            daysWithData: weekly.days.length,
+            appBreakdown: weekly.appBreakdown,
+            learningSessionsCount: sessions.length,
+            completedLessons: completedLessons,
+          );
 
           if (insights.isEmpty) {
             return ListView(
               padding: const EdgeInsets.all(24),
               children: [
                 const SizedBox(height: 40),
-                Icon(Icons.lightbulb_outline, size: 64, color: cs.onSurfaceVariant),
+                Icon(Icons.lightbulb_outline,
+                    size: 64, color: cs.onSurfaceVariant),
                 const SizedBox(height: 16),
                 Text(
                   'Belum Ada Insight',
@@ -60,108 +79,17 @@ class InsightTab extends ConsumerWidget {
       ),
     );
   }
-
-  List<_Insight> _generateInsights(
-    WeeklyScreenTime weekly,
-    AsyncValue<List<dynamic>> sessionsAsync,
-    AsyncValue<List<dynamic>> progressAsync,
-  ) {
-    final insights = <_Insight>[];
-
-    final avgDaily = weekly.days.isEmpty
-        ? 0
-        : weekly.totalMinutes ~/ weekly.days.length;
-
-    if (avgDaily > 240) {
-      insights.add(_Insight(
-        icon: Icons.warning_amber_rounded,
-        color: Colors.orange,
-        title: 'Waktu Layar Tinggi',
-        body: 'Rata-rata ${(avgDaily / 60).toStringAsFixed(1)} jam/hari. Pertimbangkan batasi waktu bermain.',
-        severity: _InsightSeverity.warning,
-      ));
-    }
-
-    if (avgDaily > 0 && avgDaily <= 120) {
-      insights.add(_Insight(
-        icon: Icons.thumb_up_alt_outlined,
-        color: Colors.green,
-        title: 'Waktu Layar Sehat',
-        body: 'Rata-rata ${(avgDaily / 60).toStringAsFixed(1)} jam/hari. Baik untuk tumbuh kembang.',
-        severity: _InsightSeverity.positive,
-      ));
-    }
-
-    if (sessionsAsync.hasValue && sessionsAsync.value != null) {
-      final sessions = sessionsAsync.value!;
-      if (sessions.isNotEmpty) {
-        insights.add(_Insight(
-          icon: Icons.auto_stories,
-          color: Colors.blue,
-          title: 'Aktifitas Belajar',
-          body: '${sessions.length} sesi belajar dalam 7 hari terakhir.',
-          severity: _InsightSeverity.neutral,
-        ));
-      }
-    }
-
-    if (progressAsync.hasValue && progressAsync.value != null) {
-      final progress = progressAsync.value!;
-      final completed = progress.where((p) => p.completed).length;
-      if (completed > 0) {
-        insights.add(_Insight(
-          icon: Icons.emoji_events_outlined,
-          color: Colors.amber,
-          title: 'Kemajuan Belajar',
-          body: '$completed materi telah selesai. Hebat!',
-          severity: _InsightSeverity.positive,
-        ));
-      }
-    }
-
-    final entertainmentMins = weekly.appBreakdown.entries
-        .where((e) => e.key.contains('youtube') || e.key.contains('game'))
-        .fold(0, (sum, e) => sum + e.value);
-    if (entertainmentMins > weekly.totalMinutes * 0.7 && weekly.totalMinutes > 0) {
-      insights.add(const _Insight(
-        icon: Icons.balance,
-        color: Colors.purple,
-        title: 'Dorong Balance',
-        body: '70%+ waktu dihabiskan untuk hiburan. Dorong juga kegiatan belajar.',
-        severity: _InsightSeverity.suggestion,
-      ));
-    }
-
-    return insights;
-  }
-}
-
-enum _InsightSeverity { positive, warning, suggestion, neutral }
-
-class _Insight {
-  final IconData icon;
-  final Color color;
-  final String title;
-  final String body;
-  final _InsightSeverity severity;
-
-  const _Insight({
-    required this.icon,
-    required this.color,
-    required this.title,
-    required this.body,
-    required this.severity,
-  });
 }
 
 class _InsightCard extends StatelessWidget {
-  final _Insight insight;
+  final ChildInsight insight;
 
   const _InsightCard({required this.insight});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final color = _colorForType(insight.type);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -174,10 +102,10 @@ class _InsightCard extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: insight.color.withValues(alpha: 0.12),
+                color: color.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(insight.icon, color: insight.color, size: 24),
+              child: Icon(_iconForType(insight.type), color: color, size: 24),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -200,5 +128,43 @@ class _InsightCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Color _colorForType(InsightType type) {
+    switch (type) {
+      case InsightType.screenTimeHigh:
+      case InsightType.entertainmentHeavy:
+      case InsightType.learningInactive:
+        return Colors.orange;
+      case InsightType.screenTimeHealthy:
+      case InsightType.learningProgress:
+      case InsightType.balanceGood:
+        return Colors.green;
+      case InsightType.learningActive:
+        return Colors.blue;
+      case InsightType.screenTimeLow:
+        return Colors.grey;
+    }
+  }
+
+  IconData _iconForType(InsightType type) {
+    switch (type) {
+      case InsightType.screenTimeHigh:
+        return Icons.warning_amber_rounded;
+      case InsightType.screenTimeHealthy:
+        return Icons.thumb_up_alt_outlined;
+      case InsightType.screenTimeLow:
+        return Icons.phone_android_outlined;
+      case InsightType.entertainmentHeavy:
+        return Icons.balance;
+      case InsightType.learningActive:
+        return Icons.auto_stories;
+      case InsightType.learningInactive:
+        return Icons.lightbulb_outline;
+      case InsightType.learningProgress:
+        return Icons.emoji_events_outlined;
+      case InsightType.balanceGood:
+        return Icons.check_circle_outline;
+    }
   }
 }
