@@ -320,8 +320,8 @@ class _LessonPageState extends ConsumerState<LessonPage> {
             ),
           ),
         ],
-        ),
       ),
+    ),
     );
   }
 
@@ -345,3 +345,5 @@ class _LessonPageState extends ConsumerState<LessonPage> {
         ) ??
         false;
   }
+
+}
