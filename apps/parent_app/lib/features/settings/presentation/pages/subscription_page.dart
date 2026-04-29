@@ -27,7 +27,25 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
   @override
   Widget build(BuildContext context) {
     final subAsync = ref.watch(subscriptionProvider);
+    final upgradeAsync = ref.watch(upgradeSubscriptionProvider);
     final cs = Theme.of(context).colorScheme;
+
+    ref.listen(upgradeSubscriptionProvider, (prev, next) {
+      if (next.hasValue && (prev == null || !prev.hasValue)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Upgrade berhasil! Selamat menikmati fitur Premium.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        ref.invalidate(subscriptionProvider);
+      }
+      if (next.hasError && (prev == null || !prev.hasError)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal: ${next.error}'), backgroundColor: Colors.red),
+        );
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(title: const Text('Langganan')),
@@ -44,10 +62,33 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
               _ComparisonTable(currentTier: tier),
               const SizedBox(height: 24),
               if (tier == SubscriptionTier.free)
-                FilledButton(
-                  onPressed: _showUpgradeSheet,
-                  child: const Text('Upgrade ke Premium Family'),
+                FilledButton.icon(
+                  onPressed: upgradeAsync.isLoading ? null : _showUpgradeSheet,
+                  icon: upgradeAsync.isLoading
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.star),
+                  label: Text(upgradeAsync.isLoading ? 'Memproses...' : 'Upgrade ke Premium Family'),
                 ),
+              if (tier != SubscriptionTier.free) ...[
+                Card(
+                  color: Colors.green.shade50,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.check_circle, color: Colors.green),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Anda sudah menggunakan ${_tierDisplayName(tier)}!',
+                            style: TextStyle(color: Colors.green.shade800, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ],
           );
         },
@@ -56,16 +97,41 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
   }
 }
 
-class _UpgradeBottomSheet extends StatelessWidget {
+class _UpgradeBottomSheet extends ConsumerStatefulWidget {
   final SubscriptionTier currentTier;
 
   const _UpgradeBottomSheet({required this.currentTier});
 
   @override
+  ConsumerState<_UpgradeBottomSheet> createState() => _UpgradeBottomSheetState();
+}
+
+class _UpgradeBottomSheetState extends ConsumerState<_UpgradeBottomSheet> {
+  String _selectedPayment = 'transfer';
+  bool _isProcessing = false;
+  String? _error;
+
+  Future<void> _processUpgrade() async {
+    setState(() {
+      _isProcessing = true;
+      _error = null;
+    });
+
+    final success = await ref.read(upgradeSubscriptionProvider.notifier).upgrade('premium_family');
+
+    if (!mounted) return;
+    setState(() => _isProcessing = false);
+
+    if (success) {
+      Navigator.pop(context);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return DraggableScrollableSheet(
-      initialChildSize: 0.7,
+      initialChildSize: 0.85,
       minChildSize: 0.5,
       maxChildSize: 0.95,
       expand: false,
@@ -113,29 +179,11 @@ class _UpgradeBottomSheet extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 28),
-              // Feature list
-              _PlanFeatureItem(
-                emoji: '👶',
-                title: 'Anak Tanpa Batas',
-                desc: 'Tambahkan profil anak tanpa batas.',
-              ),
-              _PlanFeatureItem(
-                emoji: '🤖',
-                title: 'AI Tutor Tanpa Batas',
-                desc: 'Belajar dengan bantuan AI tanpa batasan.',
-              ),
-              _PlanFeatureItem(
-                emoji: '📊',
-                title: 'Laporan Lengkap',
-                desc: 'Lacak progress belajar anak setiap hari.',
-              ),
-              _PlanFeatureItem(
-                emoji: '🛡️',
-                title: 'Kontrol Orang Tua Lengkap',
-                desc: 'Mode sekolah, kunci aplikasi, & lokasi.',
-              ),
-              const SizedBox(height: 32),
-              // Pricing card
+              _PlanFeatureItem(emoji: '👶', title: 'Anak Tanpa Batas', desc: 'Tambahkan profil anak tanpa batas.'),
+              _PlanFeatureItem(emoji: '🤖', title: 'AI Tutor Tanpa Batas', desc: 'Belajar dengan bantuan AI tanpa batasan.'),
+              _PlanFeatureItem(emoji: '📊', title: 'Laporan Lengkap', desc: 'Lacak progress belajar anak setiap hari.'),
+              _PlanFeatureItem(emoji: '🛡️', title: 'Kontrol Orang Tua Lengkap', desc: 'Mode sekolah, kunci aplikasi, & lokasi.'),
+              const SizedBox(height: 24),
               Card(
                 color: cs.primaryContainer,
                 child: Padding(
@@ -146,42 +194,56 @@ class _UpgradeBottomSheet extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Rp',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: cs.onPrimaryContainer,
-                            ),
-                          ),
-                          Text(
-                            '99.000',
-                            style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                                  fontWeight: FontWeight.w900,
-                                  color: cs.onPrimaryContainer,
-                                ),
-                          ),
+                          Text('Rp', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: cs.onPrimaryContainer)),
+                          Text('99.000', style: Theme.of(context).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w900, color: cs.onPrimaryContainer)),
                         ],
                       ),
-                      Text(
-                        '/bulan per keluarga',
-                        style: TextStyle(color: cs.onPrimaryContainer.withValues(alpha: 0.7)),
+                      Text('/bulan per keluarga', style: TextStyle(color: cs.onPrimaryContainer.withValues(alpha: 0.7))),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(color: Colors.green.shade100, borderRadius: BorderRadius.circular(12)),
+                        child: Text('Hemat 20% bila tahunan', style: TextStyle(color: Colors.green.shade800, fontSize: 12, fontWeight: FontWeight.w600)),
                       ),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
+              Text('Pilih Metode Pembayaran', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 12),
+              _PaymentOption(
+                icon: Icons.account_balance,
+                label: 'Transfer Bank',
+                sublabel: 'BCA, Mandiri, BNI, BRI',
+                selected: _selectedPayment == 'transfer',
+                onTap: () => setState(() => _selectedPayment = 'transfer'),
+              ),
+              _PaymentOption(
+                icon: Icons.qr_code,
+                label: 'QRIS',
+                sublabel: 'Semua e-wallet & mobile banking',
+                selected: _selectedPayment == 'qris',
+                onTap: () => setState(() => _selectedPayment = 'qris'),
+              ),
+              _PaymentOption(
+                icon: Icons.credit_card,
+                label: 'Kartu Kredit',
+                sublabel: 'Segera Hadir',
+                selected: _selectedPayment == 'card',
+                enabled: false,
+                onTap: () {},
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 8),
+                Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 13)),
+              ],
+              const SizedBox(height: 24),
               FilledButton(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Hubungi growly@app.com untuk upgrade manual.'),
-                    ),
-                  );
-                },
-                child: const Text('Hubungi untuk Upgrade'),
+                onPressed: _isProcessing ? null : _processUpgrade,
+                child: _isProcessing
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Text('Konfirmasi Pembayaran'),
               ),
               const SizedBox(height: 12),
               TextButton(
@@ -197,16 +259,70 @@ class _UpgradeBottomSheet extends StatelessWidget {
   }
 }
 
+class _PaymentOption extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String sublabel;
+  final bool selected;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  const _PaymentOption({
+    required this.icon,
+    required this.label,
+    required this.sublabel,
+    required this.selected,
+    this.enabled = true,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: selected ? cs.primaryContainer : (enabled ? cs.surface : Colors.grey.shade100),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: selected ? cs.primary : Colors.transparent, width: 2),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: enabled ? null : Colors.grey),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: TextStyle(fontWeight: FontWeight.w700, color: enabled ? null : Colors.grey)),
+                  Text(sublabel, style: TextStyle(fontSize: 12, color: enabled ? cs.onSurfaceVariant : Colors.grey)),
+                ],
+              ),
+            ),
+            if (!enabled)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(8)),
+                child: const Text('Segera Hadir', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700)),
+              ),
+            if (selected && enabled)
+              Icon(Icons.check_circle, color: cs.primary),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _PlanFeatureItem extends StatelessWidget {
   final String emoji;
   final String title;
   final String desc;
 
-  const _PlanFeatureItem({
-    required this.emoji,
-    required this.title,
-    required this.desc,
-  });
+  const _PlanFeatureItem({required this.emoji, required this.title, required this.desc});
 
   @override
   Widget build(BuildContext context) {
@@ -220,14 +336,8 @@ class _PlanFeatureItem extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                ),
-                Text(
-                  desc,
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-                ),
+                Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                Text(desc, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
               ],
             ),
           ),
@@ -242,11 +352,7 @@ class _CurrentPlanCard extends StatelessWidget {
   final SubscriptionModel? sub;
   final ColorScheme colorScheme;
 
-  const _CurrentPlanCard({
-    required this.tier,
-    required this.sub,
-    required this.colorScheme,
-  });
+  const _CurrentPlanCard({required this.tier, required this.sub, required this.colorScheme});
 
   @override
   Widget build(BuildContext context) {
@@ -256,39 +362,25 @@ class _CurrentPlanCard extends StatelessWidget {
         child: Column(
           children: [
             Icon(
-              tier == SubscriptionTier.free
-                  ? Icons.local_offer_outlined
-                  : Icons.star,
+              tier == SubscriptionTier.free ? Icons.local_offer_outlined : Icons.star,
               size: 48,
               color: tier == SubscriptionTier.free ? colorScheme.primary : Colors.amber,
             ),
             const SizedBox(height: 12),
-            Text(
-              _tierDisplayName(tier),
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-            ),
+            Text(_tierDisplayName(tier), style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 4),
-            Text(
-              sub?.status ?? 'free',
-              style: TextStyle(color: colorScheme.onSurfaceVariant),
-            ),
+            Text(sub?.status ?? 'free', style: TextStyle(color: colorScheme.onSurfaceVariant)),
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                color: tier == SubscriptionTier.free
-                    ? Colors.red[50]
-                    : Colors.green[50],
+                color: tier == SubscriptionTier.free ? Colors.red[50] : Colors.green[50],
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
                 tier == SubscriptionTier.free ? 'Free Plan' : 'Premium Aktif',
                 style: TextStyle(
-                  color: tier == SubscriptionTier.free
-                      ? Colors.red[700]
-                      : Colors.green[700],
+                  color: tier == SubscriptionTier.free ? Colors.red[700] : Colors.green[700],
                   fontWeight: FontWeight.w600,
                   fontSize: 12,
                 ),
@@ -303,7 +395,6 @@ class _CurrentPlanCard extends StatelessWidget {
 
 class _ComparisonTable extends StatelessWidget {
   final SubscriptionTier currentTier;
-
   const _ComparisonTable({required this.currentTier});
 
   @override
@@ -314,47 +405,17 @@ class _ComparisonTable extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Bandingkan Paket',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-            ),
+            Text('Bandingkan Paket', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 16),
-            _ComparisonRow(
-              feature: 'Jumlah Anak',
-              freeValue: '2 anak',
-              premiumValue: 'Tanpa batas',
-              isPremiumBetter: true,
-            ),
+            const _ComparisonRow(feature: 'Jumlah Anak', freeValue: '2 anak', premiumValue: 'Tanpa batas', isPremiumBetter: true),
             const Divider(height: 24),
-            _ComparisonRow(
-              feature: 'AI Tutor',
-              freeValue: '-',
-              premiumValue: 'Tanpa batas',
-              isPremiumBetter: true,
-            ),
+            const _ComparisonRow(feature: 'AI Tutor', freeValue: '-', premiumValue: 'Tanpa batas', isPremiumBetter: true),
             const Divider(height: 24),
-            _ComparisonRow(
-              feature: 'Laporan Belajar',
-              freeValue: 'Dasar',
-              premiumValue: 'Lengkap',
-              isPremiumBetter: true,
-            ),
+            const _ComparisonRow(feature: 'Laporan Belajar', freeValue: 'Dasar', premiumValue: 'Lengkap', isPremiumBetter: true),
             const Divider(height: 24),
-            _ComparisonRow(
-              feature: 'Kontrol Orang Tua',
-              freeValue: 'Dasar',
-              premiumValue: 'Lengkap + Lokasi',
-              isPremiumBetter: true,
-            ),
+            const _ComparisonRow(feature: 'Kontrol Orang Tua', freeValue: 'Dasar', premiumValue: 'Lengkap + Lokasi', isPremiumBetter: true),
             const Divider(height: 24),
-            _ComparisonRow(
-              feature: 'Mode Sekolah',
-              freeValue: '-',
-              premiumValue: 'Tersedia',
-              isPremiumBetter: true,
-            ),
+            const _ComparisonRow(feature: 'Mode Sekolah', freeValue: '-', premiumValue: 'Tersedia', isPremiumBetter: true),
           ],
         ),
       ),
@@ -368,48 +429,22 @@ class _ComparisonRow extends StatelessWidget {
   final String premiumValue;
   final bool isPremiumBetter;
 
-  const _ComparisonRow({
-    required this.feature,
-    required this.freeValue,
-    required this.premiumValue,
-    required this.isPremiumBetter,
-  });
+  const _ComparisonRow({required this.feature, required this.freeValue, required this.premiumValue, required this.isPremiumBetter});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(
-          flex: 2,
-          child: Text(feature, style: const TextStyle(fontSize: 14)),
-        ),
-        Expanded(
-          flex: 2,
-          child: Text(
-            freeValue,
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-          ),
-        ),
+        Expanded(flex: 2, child: Text(feature, style: const TextStyle(fontSize: 14))),
+        Expanded(flex: 2, child: Text(freeValue, textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: Colors.grey[600]))),
         Expanded(
           flex: 2,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.check_circle,
-                size: 16,
-                color: isPremiumBetter ? Colors.green : Colors.grey,
-              ),
+              Icon(Icons.check_circle, size: 16, color: isPremiumBetter ? Colors.green : Colors.grey),
               const SizedBox(width: 4),
-              Text(
-                premiumValue,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: isPremiumBetter ? Colors.green[800] : null,
-                ),
-              ),
+              Text(premiumValue, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isPremiumBetter ? Colors.green[800] : null)),
             ],
           ),
         ),
@@ -420,13 +455,9 @@ class _ComparisonRow extends StatelessWidget {
 
 String _tierDisplayName(SubscriptionTier tier) {
   switch (tier) {
-    case SubscriptionTier.free:
-      return 'Free Plan';
-    case SubscriptionTier.premiumFamily:
-      return 'Premium Family';
-    case SubscriptionTier.premiumAiTutor:
-      return 'Premium AI Tutor';
-    case SubscriptionTier.schoolInstitution:
-      return 'Sekolah / Institusi';
+    case SubscriptionTier.free: return 'Free Plan';
+    case SubscriptionTier.premiumFamily: return 'Premium Family';
+    case SubscriptionTier.premiumAiTutor: return 'Premium AI Tutor';
+    case SubscriptionTier.schoolInstitution: return 'Sekolah / Institusi';
   }
 }

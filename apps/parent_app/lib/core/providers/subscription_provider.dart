@@ -43,6 +43,60 @@ final childRepositoryProvider = Provider<IChildRepository>((ref) {
   return ChildRepositoryImpl(Supabase.instance.client);
 });
 
+/// Upgrade subscription notifier — calls upgrade_subscription RPC
+class UpgradeSubscriptionNotifier extends AsyncNotifier<SubscriptionModel?> {
+  @override
+  Future<SubscriptionModel?> build() async => null;
+
+  Future<bool> upgrade(String tier) async {
+    state = const AsyncLoading();
+    try {
+      final result = await Supabase.instance.client.rpc('upgrade_subscription', params: {
+        'p_tier': tier,
+        'p_payment_method': null,
+      }).maybeSingle();
+
+      if (result == null) {
+        state = AsyncError('Gagal upgrade langganan', StackTrace.current);
+        return false;
+      }
+
+      final success = result['success'] == true;
+      if (!success) {
+        final msg = result['message'] as String? ?? 'Gagal';
+        state = AsyncError(msg, StackTrace.current);
+        return false;
+      }
+
+      // Invalidate cached providers so UI reflects new tier immediately
+      ref.invalidate(subscriptionProvider);
+      ref.invalidate(canAddChildProvider);
+
+      // Return new subscription model
+      state = AsyncData(SubscriptionModel(
+        id: '',
+        parentId: Supabase.instance.client.auth.currentUser?.id ?? '',
+        tier: SubscriptionTier.values.firstWhere(
+          (t) => t.name.toLowerCase().replaceAll('premium', 'premium_').replaceAll('_', '') == tier.replaceAll('_', '').replaceAll('premium', 'premium'),
+          orElse: () => SubscriptionTier.free,
+        ),
+        status: result['status'] as String? ?? 'active',
+        billingCycle: 'monthly',
+        createdAt: DateTime.now(),
+      ));
+      return true;
+    } catch (e) {
+      state = AsyncError(e.toString(), StackTrace.current);
+      return false;
+    }
+  }
+}
+
+final upgradeSubscriptionProvider =
+    AsyncNotifierProvider<UpgradeSubscriptionNotifier, SubscriptionModel?>(() {
+  return UpgradeSubscriptionNotifier();
+});
+
 class TierGateNotifier extends FamilyAsyncNotifier<bool, String> {
   @override
   Future<bool> build(String arg) async {

@@ -58,8 +58,15 @@ class ChildRepositoryImpl implements IChildRepository {
           .single();
 
       return (ChildProfile.fromJson(Map<String, dynamic>.from(response)), null);
+    } on PostgrestException catch (e) {
+      if (e.code == 'P0001') {
+        return (null, const ChildLimitFailure(
+          message: 'Batas anak tercapai. Upgrade langganan untuk menambah anak.',
+        ));
+      }
+      return (null, DatabaseFailure(message: e.message));
     } catch (e) {
-      return (null, DatabaseFailure(message: e.toString()));
+      return (null, UnknownFailure(message: e.toString()));
     }
   }
 

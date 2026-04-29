@@ -178,7 +178,9 @@
 ### 3.9 Content Management
 | Item | Status | Notes |
 |---|---|---|
-| Content page | ⚠️ | Placeholder UI — "Coming Soon" badge |
+| Content page | ✅ | Full CRUD: filter bar, stats row, paginated table, create/edit modal, delete confirm, publish toggle |
+| Lessons table | ✅ | `lessons` table enhanced with `age_group`, `status`, `sort_order`, `content` columns |
+| RLS policies | ✅ | Admin CRUD + public read of published lessons |
 
 ---
 
@@ -198,7 +200,7 @@
 | `SyncManager.watchTable` defined | ✅ | `growly_core/lib/core/database/sync/sync_manager.dart` |
 | `SyncService.watchTable` defined | ✅ | `growly_core/lib/shared/services/sync_service.dart` |
 | Used in parent_app | ✅ | `ChildrenListNotifier` subscribes via `onPostgresChanges` |
-| Used in child_app | ⚠️ | Not wired — only parent list has realtime |
+| Used in child_app | ✅ | Wired in `child_launcher_page.dart` — subscribes to `app_restrictions`, `schedules`, `screen_time_records` changes |
 | Supabase Realtime enabled | ✅ | Channel created and cleaned up via `ref.onDispose` |
 
 **Action required:** Wire `SyncService` into parent_app child list or use `ref.invalidate` on relevant providers when data changes.
@@ -209,7 +211,7 @@
 | PIN set on child creation | ✅ | Stored as bcrypt hash in `pin_hash` column |
 | PIN verification RPC | ✅ | `verify_child_pin(p_child_id, p_pin)` |
 | PIN change in parent app | ✅ | `set_child_pin` RPC with form validation in child detail page |
-| PIN reset flow | ⚠️ | No "forgot PIN" flow for child |
+| PIN reset flow | ✅ | `reset_child_pin` RPC + parent "Reset PIN Anak" button in child detail page + "Lupa PIN?" sheet in child launcher |
 
 ### 4.4 Soft Delete Consistency
 | Item | Status | Notes |
@@ -318,9 +320,7 @@
 
 | Priority | Item | Files | Status |
 |---|---|---|---|
-| 🟢 Low | Complete content management page | `admin_web/src/app/dashboard/content/` | Pending |
-| 🟡 Medium | DB-level child limit enforcement | `child_profiles` trigger | Pre-launch |
-| 🟡 Medium | Reward streak reset on day boundary | `complete_lesson_reward` RPC | Pre-launch |
+| 🟢 Low | Reward streak reset on day boundary | `complete_lesson_reward` RPC | Pre-launch |
 
 ---
 
@@ -334,3 +334,6 @@
 | 0010_pin_rate_limit.sql | ✅ | PIN brute-force rate limiting, `pin_attempt_log` table |
 | 0011_learning_lessons.sql | ✅ | `lessons` table with seeded content per subject |
 | 0012_atomic_reward_update.sql | ✅ | `complete_lesson_reward` RPC for atomic streak+stars |
+| 0010_child_limit_enforcement | ✅ | Server-side `check_child_limit()` trigger on `child_profiles` BEFORE INSERT |
+| 0014_reset_pin_flow | ✅ | `reset_child_pin` RPC — resets PIN to 0000, verifies parent ownership |
+| 0015_upgrade_subscription | ✅ | `upgrade_subscription` RPC — upserts subscription tier, 30-day trial period |
