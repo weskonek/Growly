@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:parent_app/features/settings/providers/settings_providers.dart';
+import 'package:parent_app/core/providers/subscription_provider.dart';
+import 'package:growly_core/growly_core.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -26,6 +29,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final profileAsync = ref.watch(parentProfileProvider);
+    final subAsync = ref.watch(subscriptionProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Pengaturan')),
@@ -117,9 +121,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ListTile(
                 leading: const Icon(Icons.credit_card),
                 title: const Text('Langganan'),
-                subtitle: const Text('Free Plan'),
+                subtitle: subAsync.when(
+                  data: (sub) => Text(_tierDisplayName(sub?.tier ?? SubscriptionTier.free)),
+                  loading: () => const Text('Memuat...'),
+                  error: (_, __) => const Text('Free Plan'),
+                ),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () {},
+                onTap: () => context.go('/settings/subscription'),
               ),
 
               // PIN Lock
@@ -206,6 +214,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
     if (confirmed == true) {
       await Supabase.instance.client.auth.signOut();
+    }
+  }
+
+  String _tierDisplayName(SubscriptionTier tier) {
+    switch (tier) {
+      case SubscriptionTier.free:
+        return 'Free Plan';
+      case SubscriptionTier.premiumFamily:
+        return 'Premium Family';
+      case SubscriptionTier.premiumAiTutor:
+        return 'Premium AI Tutor';
+      case SubscriptionTier.schoolInstitution:
+        return 'Sekolah / Institusi';
     }
   }
 }

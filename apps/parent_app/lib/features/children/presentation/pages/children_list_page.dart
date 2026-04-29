@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:growly_core/growly_core.dart';
-import '../../providers/child_providers.dart' show childrenListProvider;
+import '../../../../core/providers/subscription_provider.dart';
 
 class ChildrenListPage extends ConsumerWidget {
   const ChildrenListPage({super.key});
@@ -13,10 +13,12 @@ class ChildrenListPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Profil Anak')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.go('/children/add'),
-        icon: const Icon(Icons.add),
-        label: const Text('Tambah Anak'),
+      floatingActionButton: Builder(
+        builder: (context) => FloatingActionButton.extended(
+          onPressed: () => _onAddChildTap(context, ref),
+          icon: const Icon(Icons.add),
+          label: const Text('Tambah Anak'),
+        ),
       ),
       body: childrenAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -78,6 +80,36 @@ class ChildrenListPage extends ConsumerWidget {
         },
       ),
     );
+  }
+
+  Future<void> _onAddChildTap(BuildContext context, WidgetRef ref) async {
+    final canAdd = await ref.read(canAddChildProvider.future);
+    if (!canAdd) {
+      await showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Batas Anak Tercapai'),
+          content: const Text(
+            'Akun Free hanya bisa menambahkan hingga 2 anak.\n\nUpgrade ke Premium Family untuk menambah lebih banyak.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Batal'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                context.go('/settings/subscription');
+              },
+              child: const Text('Upgrade Sekarang'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+    if (context.mounted) context.go('/children/add');
   }
 }
 

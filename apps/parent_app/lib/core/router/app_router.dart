@@ -16,6 +16,7 @@ import '../../features/parental_control/presentation/pages/school_mode_page.dart
 import '../../features/parental_control/presentation/pages/safe_mode_page.dart';
 import '../../features/parental_control/presentation/pages/location_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
+import '../../features/settings/presentation/pages/subscription_page.dart';
 import 'package:growly_core/growly_core.dart' show authStateChangesProvider;
 
 /// Router provider with auth redirect logic
@@ -137,6 +138,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/settings',
             name: 'settings',
             builder: (context, state) => const SettingsPage(),
+            routes: [
+              GoRoute(
+                path: 'subscription',
+                name: 'subscription',
+                builder: (context, state) => const SubscriptionPage(),
+              ),
+            ],
           ),
         ],
       ),

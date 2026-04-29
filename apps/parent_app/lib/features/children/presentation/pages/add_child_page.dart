@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../providers/child_providers.dart' show createChildProvider;
+import '../../providers/child_providers.dart' show createChildProvider, childrenListProvider;
 import '../../../../core/providers/subscription_provider.dart';
 
 class AddChildPage extends ConsumerStatefulWidget {
@@ -34,6 +34,16 @@ class _AddChildPageState extends ConsumerState<AddChildPage> {
   Widget build(BuildContext context) {
     final childState = ref.watch(createChildProvider);
     final canAddAsync = ref.watch(canAddChildProvider);
+
+    // Re-check limit when subscription changes (e.g., after upgrade)
+    ref.listen(subscriptionProvider, (prev, next) {
+      next.whenData((_) => ref.invalidate(canAddChildProvider));
+    });
+
+    // Re-check limit when children list changes (add/delete)
+    ref.listen(childrenListProvider, (prev, next) {
+      ref.invalidate(canAddChildProvider);
+    });
 
     ref.listen(createChildProvider, (prev, next) {
       if (next.hasError && (prev == null || !prev.hasError)) {

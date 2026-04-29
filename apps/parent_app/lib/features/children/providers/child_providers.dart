@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:growly_core/growly_core.dart';
+import '../../../../core/providers/subscription_provider.dart' hide childRepositoryProvider;
 
 /// Re-export children providers from growly_core for parent app feature usage
 export 'package:growly_core/shared/providers/child_providers.dart'
@@ -48,10 +49,19 @@ class CreateChildNotifier extends AsyncNotifier<ChildProfile?> {
     final repository = ref.read(childRepositoryProvider);
     final (result, failure) = await repository.createChild(child);
     if (failure != null) {
-      state = AsyncError(failure.message, StackTrace.current);
+      final msg = failure.message.toLowerCase();
+      if (msg.contains('limit') || msg.contains('p0001')) {
+        state = AsyncError(
+          'Batas anak tercapai. Upgrade langganan untuk menambah anak.',
+          StackTrace.current,
+        );
+      } else {
+        state = AsyncError(failure.message, StackTrace.current);
+      }
       return null;
     }
     ref.invalidate(childrenListProvider);
+    ref.invalidate(canAddChildProvider);
     state = AsyncData(result!);
     return result;
   }
@@ -102,6 +112,7 @@ class DeleteChildNotifier extends AsyncNotifier<bool> {
           })
           .eq('id', childId);
       ref.invalidate(childrenListProvider);
+      ref.invalidate(canAddChildProvider);
       state = const AsyncData(true);
       return true;
     } catch (e) {
