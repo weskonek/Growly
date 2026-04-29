@@ -16,16 +16,17 @@ import '../../features/parental_control/presentation/pages/school_mode_page.dart
 import '../../features/parental_control/presentation/pages/safe_mode_page.dart';
 import '../../features/parental_control/presentation/pages/location_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
-import '../providers/auth_provider.dart';
+import 'package:growly_core/growly_core.dart' show authStateChangesProvider;
 
 /// Router provider with auth redirect logic
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authStateProvider);
+  // Use growly_core's AsyncNotifier version — has eager seed to prevent blank screen
+  final authState = ref.watch(authStateChangesProvider);
 
   return GoRouter(
     initialLocation: '/dashboard',
     redirect: (context, state) {
-      // Wait for auth state to load — prevents flash of login screen on cold start
+      // Always wait for real data — guards against showing dashboard briefly before login redirect fires
       if (authState.isLoading || authState.valueOrNull == null) return null;
 
       final isLoggedIn = authState.valueOrNull!.session != null;

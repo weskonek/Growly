@@ -22,7 +22,6 @@ class AuthNotifier extends StateNotifier<User?> {
       email: email,
       password: password,
     );
-    // State will update via onAuthStateChange listener above
   }
 
   Future<void> signUp({
@@ -57,9 +56,31 @@ final authNotifierProvider = StateNotifierProvider<AuthNotifier, User?>((ref) {
   return AuthNotifier();
 });
 
-/// Stream of auth state changes — use this in router for redirects
-final authStateChangesProvider = StreamProvider<AuthState>((ref) {
-  return SupabaseService.client.auth.onAuthStateChange;
+/// Stream-based auth state with eager seed — prevents blank screen on cold start.
+/// Router sees real session value immediately instead of AsyncLoading on first frame.
+class _AuthStateNotifier extends AsyncNotifier<AuthState> {
+  @override
+  Future<AuthState> build() async {
+    // Eagerly seed so router has real state before first build completes
+    final session = SupabaseService.client.auth.currentSession;
+    state = AsyncData(AuthState(AuthChangeEvent.signedOut, session));
+
+    // Subscribe to live changes
+    final sub = SupabaseService.client.auth.onAuthStateChange.listen((event) {
+      if (!state.hasValue || state.value!.session != event.session) {
+        state = AsyncData(event);
+      }
+    });
+    ref.onDispose(sub.cancel);
+
+    return state.value!;
+  }
+}
+
+/// Stream of auth state changes — watched by router guard.
+final authStateChangesProvider =
+    AsyncNotifierProvider<_AuthStateNotifier, AuthState>(() {
+  return _AuthStateNotifier();
 });
 
 /// Check if user is authenticated — watched by router guard
