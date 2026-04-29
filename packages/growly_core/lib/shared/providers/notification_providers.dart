@@ -1,7 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:growly_core/growly_core.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/database/remote/supabase_service.dart';
+import '../../../core/errors/failures.dart';
+import '../../domain/models/notification_model.dart';
 
 /// Notification repository interface
 abstract class INotificationRepository {
@@ -94,7 +95,7 @@ class NotificationRepositoryImpl implements INotificationRepository {
 
 // Repository provider
 final notificationRepositoryProvider = Provider<INotificationRepository>((ref) {
-  return NotificationRepositoryImpl(Supabase.instance.client);
+  return NotificationRepositoryImpl(SupabaseService.client);
 });
 
 // Notifications list provider

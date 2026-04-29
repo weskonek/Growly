@@ -17,6 +17,7 @@ import '../../features/parental_control/presentation/pages/safe_mode_page.dart';
 import '../../features/parental_control/presentation/pages/location_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
 import '../../features/settings/presentation/pages/subscription_page.dart';
+import '../../features/notifications/presentation/pages/notifications_page.dart';
 import 'package:growly_core/growly_core.dart' show authStateChangesProvider;
 
 /// Router provider with auth redirect logic
