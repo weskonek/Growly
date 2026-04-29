@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Lesson, createLesson, updateLesson, deleteLesson, togglePublish } from './actions'
+import { Lesson, createLesson, getLessons, updateLesson, deleteLesson, togglePublish } from './actions'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -67,11 +67,9 @@ function ageGroupLabel(ag: number | null) {
 function LessonModal({
   initial,
   onClose,
-  onSave,
 }: {
   initial?: Lesson
   onClose: () => void
-  onSave: (fd: FormData) => Promise<void>
 }) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -212,7 +210,7 @@ function LessonModal({
               placeholder='[{"order":1,"instruction":"..."}]'
             />
             <p className="text-xs text-muted-foreground mt-1">
-              Format JSON array. Contoh: [{"order":1,"instruction":"Baca huruf A"},{"order":2,"instruction":"Tulis huruf A"}]
+              {'Format JSON array. Contoh: [{"order":1,"instruction":"..."}]'}
             </p>
           </div>
 
@@ -507,12 +505,6 @@ export function ContentClient({ initialLessons }: { initialLessons: Lesson[] }) 
           key={modalLesson?.id ?? 'new'}
           initial={modalLesson}
           onClose={() => setModalLesson(undefined)}
-          onSave={async (fd) => {
-            const result = modalLesson?.id
-              ? await updateLesson(modalLesson.id, fd)
-              : await createLesson(fd)
-            if (result.success) setLessons(await getLessons())
-          }}
         />
       )}
       {deleteLessonData && (
