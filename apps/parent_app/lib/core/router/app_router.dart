@@ -21,7 +21,8 @@ import '../../features/settings/presentation/pages/help_page.dart';
 import '../../features/settings/presentation/pages/privacy_page.dart';
 import '../../features/notifications/presentation/pages/notifications_page.dart';
 import '../../features/onboarding/presentation/pages/onboarding_wizard_page.dart';
-import 'package:growly_core/growly_core.dart' show authStateChangesProvider, onboardingCompletedProvider;
+import '../../features/family_rewards/presentation/pages/reward_box_page.dart';
+import 'package:growly_core/growly_core.dart' show authStateChangesProvider;
 
 /// Router provider with auth redirect logic
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -36,18 +37,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isLoggedIn = authState.valueOrNull!.session != null;
       final isAuthRoute = state.matchedLocation.startsWith('/auth');
       final isSplash = state.matchedLocation == '/splash';
-      final isOnboarding = state.matchedLocation == '/onboarding';
 
       if (!isLoggedIn && !isAuthRoute) return '/auth/login';
       if (isLoggedIn && isAuthRoute) return '/dashboard';
-
-      // Redirect to onboarding if logged in but haven't completed it
-      if (isLoggedIn && !isOnboarding) {
-        // Check onboarding status async — we use a quick sync check via query param
-        // For now, always go to dashboard (onboarding check done inside dashboard)
-        // The dashboard page will show the onboarding dialog on mount if needed
-      }
-
       if (isLoggedIn && isSplash) return '/dashboard';
       return null;
     },
@@ -65,6 +57,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/onboarding',
         name: 'onboarding',
         builder: (context, state) => const OnboardingWizardPage(),
+      ),
+      // Family rewards (outside shell, accessed from dashboard/child detail)
+      GoRoute(
+        path: '/family-rewards',
+        name: 'family-rewards',
+        builder: (context, state) => const RewardBoxPage(),
       ),
       // Auth routes
       GoRoute(

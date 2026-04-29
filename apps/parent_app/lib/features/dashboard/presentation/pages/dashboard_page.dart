@@ -270,6 +270,27 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               },
             ),
 
+            const SizedBox(height: 16),
+
+            // Family rewards shortcut
+            Card(
+              child: ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Center(child: Text('🎁', style: TextStyle(fontSize: 22))),
+                ),
+                title: const Text('Kotak Hadiah Keluarga'),
+                subtitle: const Text('Kelola hadiah bintang untuk anak'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.go('/family-rewards'),
+              ),
+            ),
+
             const SizedBox(height: 24),
 
             // AI Insights

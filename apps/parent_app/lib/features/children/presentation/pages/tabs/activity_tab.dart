@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:go_router/go_router.dart';
 import 'package:growly_core/growly_core.dart';
 import '../../../providers/child_activity_providers.dart';
 
@@ -117,6 +118,22 @@ class _TodayScreenTimeCard extends ConsumerWidget {
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: cs.onSurfaceVariant,
                       ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  decoration: BoxDecoration(
+                    color: cs.primaryContainer.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: ListTile(
+                    dense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                    leading: const Text('🎁', style: TextStyle(fontSize: 20)),
+                    title: const Text('Kotak Hadiah Keluarga', style: TextStyle(fontSize: 13)),
+                    subtitle: const Text('Kelola hadiah bintang', style: TextStyle(fontSize: 11)),
+                    trailing: const Icon(Icons.chevron_right, size: 18),
+                    onTap: () => GoRouter.of(context).go('/family-rewards'),
+                  ),
                 ),
               ],
             );

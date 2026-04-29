@@ -830,10 +830,21 @@ class _LauncherContent extends ConsumerWidget {
                 onTap: () => context.go('/rewards'),
               ),
               _LauncherCard(
-                emoji: '👤',
-                label: 'Profilku',
-                color: const Color(0xFF2ECC71),
-                onTap: () => context.go('/profile'),
+                emoji: '🎮',
+                label: 'Bermain',
+                color: isBlocked
+                    ? Colors.grey.shade400
+                    : remaining <= 0
+                        ? Colors.red.shade300
+                        : const Color(0xFFE74C3C),
+                onTap: isBlocked || remaining <= 0
+                    ? null
+                    : () => context.go('/home'),
+                disabledReason: isBlocked
+                    ? 'Mode ${schedule?.mode == 'school' ? 'Sekolah' : 'Tidur'} aktif'
+                    : remaining <= 0
+                        ? 'Waktu layar habis'
+                        : null,
               ),
             ],
           ),
@@ -910,12 +921,14 @@ class _LauncherCard extends StatelessWidget {
   final String emoji, label;
   final Color color;
   final VoidCallback? onTap;
+  final String? disabledReason;
 
   const _LauncherCard({
     required this.emoji,
     required this.label,
     required this.color,
     this.onTap,
+    this.disabledReason,
   });
 
   @override
@@ -925,7 +938,7 @@ class _LauncherCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: disabled ? Colors.grey.shade300 : color,
+          color: disabled ? Colors.grey.shade400 : color,
           borderRadius: BorderRadius.circular(20),
           boxShadow: disabled
               ? null
@@ -950,6 +963,18 @@ class _LauncherCard extends StatelessWidget {
                 fontWeight: FontWeight.w800,
               ),
             ),
+            if (disabledReason != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                disabledReason!,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ],
         ),
       ),
