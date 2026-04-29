@@ -321,7 +321,6 @@ class _LessonPageState extends ConsumerState<LessonPage> {
           ),
         ],
         ),
-        ),
       ),
     );
   }
