@@ -26,17 +26,27 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/dashboard',
     redirect: (context, state) {
-      // Always wait for real data — guards against showing dashboard briefly before login redirect fires
-      if (authState.isLoading || authState.valueOrNull == null) return null;
-
+      // Guard: while auth state is still loading, show splash — never render dashboard unauthenticated
+      if (authState.isLoading) return '/splash';
+      // valueOrNull is guaranteed non-null here due to _AuthStateNotifier eager seed
       final isLoggedIn = authState.valueOrNull!.session != null;
       final isAuthRoute = state.matchedLocation.startsWith('/auth');
+      final isSplash = state.matchedLocation == '/splash';
 
       if (!isLoggedIn && !isAuthRoute) return '/auth/login';
       if (isLoggedIn && isAuthRoute) return '/dashboard';
+      if (isLoggedIn && isSplash) return '/dashboard';
       return null;
     },
     routes: [
+      // Splash shown while auth state is being resolved
+      GoRoute(
+        path: '/splash',
+        name: 'splash',
+        builder: (context, state) => const Scaffold(
+          body: Center(child: CircularProgressIndicator()),
+        ),
+      ),
       // Auth routes
       GoRoute(
         path: '/auth/login',

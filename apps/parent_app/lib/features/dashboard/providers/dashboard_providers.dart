@@ -21,6 +21,9 @@ final learningStatsProvider =
 
 /// Dashboard aggregate stats across all children
 final dashboardStatsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  final user = SupabaseService.client.auth.currentUser;
+  if (user == null) return {};
+
   final childrenAsync = ref.watch(childrenListProvider);
   final children = childrenAsync.valueOrNull ?? [];
 
@@ -52,6 +55,9 @@ final dashboardStatsProvider = FutureProvider<Map<String, dynamic>>((ref) async 
 
 /// Risk indicators based on screen time vs learning balance
 final riskIndicatorsProvider = FutureProvider<List<String>>((ref) async {
+  final user = SupabaseService.client.auth.currentUser;
+  if (user == null) return [];
+
   final childrenAsync = ref.watch(childrenListProvider);
   final children = childrenAsync.valueOrNull ?? [];
   final risks = <String>[];
