@@ -72,11 +72,19 @@ class MainActivity : FlutterActivity() {
                 }
                 "lockApp" -> {
                     val packageName = call.argument<String>("package") ?: ""
-                    result.success(lockApp(packageName))
+                    val success = lockApp(packageName)
+                    if (!success) {
+                        android.util.Log.w("Growly", "lockApp failed — Device Admin not active for package: $packageName")
+                    }
+                    result.success(success)
                 }
                 "unlockApp" -> {
                     val packageName = call.argument<String>("package") ?: ""
-                    result.success(unlockApp(packageName))
+                    val success = unlockApp(packageName)
+                    if (!success) {
+                        android.util.Log.w("Growly", "unlockApp failed for package: $packageName")
+                    }
+                    result.success(success)
                 }
                 "enableKioskMode" -> {
                     val allowedPackage = call.argument<String>("allowedPackage") ?: packageName

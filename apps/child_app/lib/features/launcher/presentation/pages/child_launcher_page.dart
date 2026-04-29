@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:growly_core/growly_core.dart' hide currentChildProvider;
@@ -7,6 +8,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:child_app/features/launcher/providers/launcher_providers.dart';
 import 'package:child_app/core/router/child_router.dart';
 import 'package:child_app/core/services/services_providers.dart';
+
+const _channel = MethodChannel('com.growly/android_parental_control');
 
 class ChildLauncherPage extends ConsumerStatefulWidget {
   const ChildLauncherPage({super.key});
@@ -69,8 +72,47 @@ class _ChildLauncherPageState extends ConsumerState<ChildLauncherPage>
     }
   }
 
+  Future<void> _ensureDeviceAdmin() async {
+    try {
+      final isAdmin = await _channel.invokeMethod<bool>('isDeviceAdmin') ?? false;
+      if (!isAdmin) {
+        // Show dialog explaining why Device Admin is needed, then request it
+        final shouldRequest = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: const Text('Izin Diperlukan'),
+            content: const Text(
+              'Growly memerlukan akses Device Admin untuk mengunci aplikasi yang '
+              'dibatasi oleh orang tua. Tanpa izin ini, beberapa batasan tidak '
+              'akan berjalan.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Nanti'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Berikan Izin'),
+              ),
+            ],
+          ),
+        );
+        if (shouldRequest == true) {
+          await _channel.invokeMethod('requestDeviceAdmin');
+        }
+      }
+    } catch (_) {
+      // Native code unavailable — continue without Device Admin
+    }
+  }
+
   void _subscribeToChildSync(String childId, String parentId) {
     _syncChannel?.unsubscribe();
+
+    // Ensure Device Admin is granted before enforcement starts
+    _ensureDeviceAdmin();
 
     // Start all services for this child
     ref.read(parentalControlSyncServiceProvider).startSync(childId);
