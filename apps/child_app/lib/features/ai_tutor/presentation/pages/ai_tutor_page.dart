@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:growly_core/growly_core.dart';
 import 'package:child_app/features/ai_tutor/providers/ai_tutor_providers.dart';
-import '../../launcher/providers/launcher_providers.dart' as launcher;
+import '../../../../features/launcher/providers/launcher_providers.dart' as launcher;
 
 class AiTutorPage extends ConsumerStatefulWidget {
   const AiTutorPage({super.key});
@@ -86,7 +87,6 @@ class _AiTutorPageState extends ConsumerState<AiTutorPage> {
 
     final messages = tutorAsync.whenOrNull(data: (tutor) => tutor.messages) ?? [];
 
-    final appBarTitle = isYoungChild ? 'Cerita Bareng 🤖' : 'AI Tutor';
     final hintText = isYoungChild
         ? 'Aku akan cerita cerita seru! Ketik tema yang kamu mau ya!'
         : 'Aku akan memberi petunjuk, bukan langsung jawab ya! Supaya kamu makin pintar 😊';
@@ -425,7 +425,7 @@ class _ChatBubble extends StatelessWidget {
         ? (isAI ? const Color(0xFF4A148C) : Colors.white)
         : (isAI ? cs.onPrimaryContainer : cs.onPrimary);
 
-    final fontSize = isYoungChild ? (isAI ? 17 : 16) : 15;
+    final double fontSize = isYoungChild ? (isAI ? 17.0 : 16.0) : 15.0;
     final borderRadius = isYoungChild
         ? BorderRadius.circular(20)
         : (isAI
