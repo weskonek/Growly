@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:growly_core/growly_core.dart';
+import 'package:child_app/core/router/child_router.dart' show verifiedChildIdProvider;
 
 final _profileChildProvider = FutureProvider<ChildProfile?>((ref) async {
   final childId = ref.watch(_childIdProvider);
@@ -84,6 +85,13 @@ class ChildProfilePage extends ConsumerWidget {
               icon: const Icon(Icons.arrow_back),
               onPressed: () => context.go('/home'),
             ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.edit),
+                tooltip: 'Edit Profil',
+                onPressed: () => _showEditAvatarSheet(context, ref, child),
+              ),
+            ],
           ),
           body: ListView(
             padding: const EdgeInsets.all(24),
@@ -288,5 +296,78 @@ class ChildProfilePage extends ConsumerWidget {
     final months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
                    'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
     return '${created.day} ${months[created.month - 1]} ${created.year}';
+  }
+
+  // ── Edit Avatar Sheet ─────────────────────────────────────────
+  static const _avatarOptions = [
+    '👦', '👧', '🧒', '👶', '🦸', '🧚', '🐼', '🦁', '🐰', '🐸',
+    '🦊', '🐨', '🐯', '🦄', '🐧', '🐲', '🦋', '🐝', '🌟', '🚀',
+  ];
+
+  void _showEditAvatarSheet(BuildContext context, WidgetRef ref, ChildProfile child) {
+    String selected = child.avatarUrl ?? _avatarOptions[0];
+
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Pilih Avatar', style: Theme.of(ctx).textTheme.titleLarge),
+              const SizedBox(height: 20),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: _avatarOptions.map((emoji) {
+                  final isSelected = emoji == selected;
+                  return GestureDetector(
+                    onTap: () => setSheetState(() => selected = emoji),
+                    child: Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? Theme.of(ctx).colorScheme.primaryContainer
+                            : Theme.of(ctx).colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(14),
+                        border: isSelected
+                            ? Border.all(
+                                color: Theme.of(ctx).colorScheme.primary,
+                                width: 2,
+                              )
+                            : null,
+                      ),
+                      child: Center(
+                        child: Text(emoji, style: const TextStyle(fontSize: 30)),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 24),
+              FilledButton(
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  await _updateAvatar(ref, child.id, selected);
+                },
+                child: const Text('Simpan'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _updateAvatar(WidgetRef ref, String childId, String emoji) async {
+    try {
+      await Supabase.instance.client
+          .from('child_profiles')
+          .update({'avatar_url': emoji})
+          .eq('id', childId);
+      ref.invalidate(_profileChildProvider);
+    } catch (_) {}
   }
 }
