@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:growly_core/growly_core.dart';
 import '../../providers/child_providers.dart' show createChildProvider, childrenListProvider;
 import '../../../../core/providers/subscription_provider.dart';
 
@@ -18,6 +20,7 @@ class _AddChildPageState extends ConsumerState<AddChildPage> {
 
   DateTime? _selectedDate;
   String? _selectedAvatar;
+  String? _selectedGender;
 
   final List<String> _avatarOptions = [
     '👦', '👧', '🧒', '👶', '🦸', '🧚', '🐼', '🦁', '🐰', '🐸',
@@ -45,12 +48,11 @@ class _AddChildPageState extends ConsumerState<AddChildPage> {
       ref.invalidate(canAddChildProvider);
     });
 
-    // Listen for limit reached → redirect to upgrade banner instead of error
+    // Show QR dialog on success instead of navigating directly
     ref.listen(createChildProvider, (prev, next) {
       if (next.hasError && (prev == null || !prev.hasError)) {
         final msg = '${next.error}'.toLowerCase();
         if (msg.contains('limit') || msg.contains('batas') || msg.contains('child_limit')) {
-          // DB trigger fired — show upgrade banner instead of error
           ref.invalidate(canAddChildProvider);
           return;
         }
@@ -60,11 +62,7 @@ class _AddChildPageState extends ConsumerState<AddChildPage> {
         );
       }
       if (next.hasValue && next.value != null && (prev == null || prev.value == null)) {
-        ScaffoldMessenger.of(context).clearSnackBars();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profil anak berhasil ditambahkan!')),
-        );
-        context.go('/children');
+        _showPairingQrDialog(context, next.value!);
       }
     });
 
@@ -77,6 +75,14 @@ class _AddChildPageState extends ConsumerState<AddChildPage> {
             ? _buildForm(context, childState, Theme.of(context).colorScheme)
             : _buildUpgradeBanner(context),
       ),
+    );
+  }
+
+  void _showPairingQrDialog(BuildContext context, ChildProfile child) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => _PairingQrDialog(child: child),
     );
   }
 
@@ -153,6 +159,21 @@ class _AddChildPageState extends ConsumerState<AddChildPage> {
               ),
             ),
             const SizedBox(height: 24),
+            Text(
+              'Jenis Kelamin',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                _buildGenderChip(context, 'Laki-laki', 'male', cs),
+                const SizedBox(width: 12),
+                _buildGenderChip(context, 'Perempuan', 'female', cs),
+                const SizedBox(width: 12),
+                _buildGenderChip(context, 'Lainnya', 'other', cs),
+              ],
+            ),
+            const SizedBox(height: 24),
             TextFormField(
               controller: _nameController,
               textCapitalization: TextCapitalization.words,
@@ -221,6 +242,30 @@ class _AddChildPageState extends ConsumerState<AddChildPage> {
     );
   }
 
+  Widget _buildGenderChip(
+      BuildContext context, String label, String value, ColorScheme cs) {
+    final isSelected = _selectedGender == value;
+    return GestureDetector(
+      onTap: () => setState(() =>
+          _selectedGender = isSelected ? null : value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? cs.primaryContainer : cs.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(20),
+          border: isSelected ? Border.all(color: cs.primary, width: 2) : null,
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? cs.onPrimaryContainer : null,
+            fontWeight: isSelected ? FontWeight.w600 : null,
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _pickDate() async {
     final now = DateTime.now();
     final date = await showDatePicker(
@@ -248,7 +293,99 @@ class _AddChildPageState extends ConsumerState<AddChildPage> {
           birthDate: _selectedDate!,
           avatarUrl: _selectedAvatar,
           pin: _pinController.text.isNotEmpty ? _pinController.text : null,
+          gender: _selectedGender,
         );
-    // Navigation and feedback handled by ref.listen above
+  }
+}
+
+class _PairingQrDialog extends StatelessWidget {
+  final ChildProfile child;
+
+  const _PairingQrDialog({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final qrData = 'growly://pair/${child.pairingCode ?? child.id}';
+
+    return AlertDialog(
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(20))),
+      title: Row(
+        children: [
+          Icon(Icons.qr_code_2, color: cs.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Hubungkan HP ${child.name}',
+              style: const TextStyle(fontSize: 18),
+            ),
+          ),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade200, width: 2),
+            ),
+            child: QrImageView(
+              data: qrData,
+              version: QrVersions.auto,
+              size: 200,
+              eyeStyle: const QrEyeStyle(
+                eyeShape: QrEyeShape.square,
+                color: Color(0xFF1A1A2E),
+              ),
+              dataModuleStyle: const QrDataModuleStyle(
+                dataModuleShape: QrDataModuleShape.square,
+                color: Color(0xFF1A1A2E),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Buka aplikasi Growly di HP anak, lalu scan QR ini.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            decoration: BoxDecoration(
+              color: cs.primaryContainer,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              child.pairingCode ?? child.id.substring(0, 8).toUpperCase(),
+              style: TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 6,
+                fontFamily: 'monospace',
+                color: cs.primary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'atau ketik kode di atas secara manual',
+            style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+          ),
+        ],
+      ),
+      actions: [
+        FilledButton(
+          onPressed: () {
+            Navigator.pop(context);
+            context.go('/children');
+          },
+          child: const Text('Selesai'),
+        ),
+      ],
+    );
   }
 }

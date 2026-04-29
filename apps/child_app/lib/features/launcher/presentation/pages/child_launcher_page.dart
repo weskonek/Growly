@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:growly_core/growly_core.dart' hide currentChildProvider;
+import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:child_app/features/launcher/providers/launcher_providers.dart';
 import 'package:child_app/core/router/child_router.dart';
@@ -306,18 +307,150 @@ class _PinGate extends ConsumerStatefulWidget {
 }
 
 class _PinGateState extends ConsumerState<_PinGate> {
-  final _controller = TextEditingController();
+  // Step 1: scanning state
+  String? _scannedPairingCode;
+  // Step 2: child info after successful lookup
+  String? _childId;
+  String? _parentId;
+  String? _childName;
+
+  final _pinController = TextEditingController();
   bool _isLoading = false;
   String? _error;
+  bool _hasCameraError = false;
 
   @override
   void dispose() {
-    _controller.dispose();
+    _pinController.dispose();
     super.dispose();
   }
 
-  Future<void> _verify() async {
-    final pin = _controller.text.trim();
+  // ─── Step 1: QR scan ───────────────────────────────────────────────────────
+
+  void _onBarcodeDetected(BarcodeCapture capture) {
+    final barcode = capture.barcodes.firstOrNull;
+    final raw = barcode?.rawValue;
+    if (raw == null) return;
+
+    // Accept deep link format: growly://pair/ABC123
+    if (raw.startsWith('growly://pair/')) {
+      final code = raw.replaceFirst('growly://pair/', '');
+      _lookupChild(code);
+    } else if (raw.length == 6 && RegExp(r'^[A-Z0-9]+$').hasMatch(raw)) {
+      // Fallback: raw 6-char code typed or shown without scheme
+      _lookupChild(raw);
+    }
+  }
+
+  Future<void> _lookupChild(String pairingCode) async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final result = await Supabase.instance.client
+          .from('child_profiles')
+          .select('id, name, parent_id, pin_hash')
+          .eq('pairing_code', pairingCode)
+          .eq('is_active', true)
+          .maybeSingle();
+
+      if (result == null) {
+        setState(() {
+          _error = 'Kode tidak valid. Minta orang tua tampilkan QR lagi.';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Check if PIN is set — if no pin_hash, redirect to parent app to set PIN first
+      if (result['pin_hash'] == null) {
+        setState(() {
+          _error = 'PIN belum diatur. Minta orang tua atur PIN di aplikasi Growly Parent.';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      setState(() {
+        _scannedPairingCode = pairingCode;
+        _childId = result['id'] as String;
+        _parentId = result['parent_id'] as String;
+        _childName = result['name'] as String;
+        _isLoading = false;
+      });
+    } catch (_) {
+      setState(() {
+        _error = 'Terjadi kesalahan. Coba lagi.';
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _showManualCodeInput() {
+    final controller = TextEditingController();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          left: 24,
+          right: 24,
+          top: 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Ketik Kode Manual',
+              style: Theme.of(ctx).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Masukkan kode 6 huruf yang ditampilkan di aplikasi Growly Parent.',
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              textCapitalization: TextCapitalization.characters,
+              textAlign: TextAlign.center,
+              maxLength: 6,
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: 4),
+              decoration: const InputDecoration(
+                counterText: '',
+                hintText: '------',
+                border: OutlineInputBorder(),
+              ),
+              onSubmitted: (value) {
+                Navigator.pop(ctx);
+                if (value.trim().isNotEmpty) _lookupChild(value.trim().toUpperCase());
+              },
+            ),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                if (controller.text.trim().isNotEmpty) {
+                  _lookupChild(controller.text.trim().toUpperCase());
+                }
+              },
+              child: const Text('Cari Profil'),
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Step 2: PIN verification ──────────────────────────────────────────────
+
+  Future<void> _verifyPin() async {
+    final pin = _pinController.text.trim();
     if (pin.isEmpty) return;
 
     setState(() {
@@ -326,91 +459,240 @@ class _PinGateState extends ConsumerState<_PinGate> {
     });
 
     try {
-      final children = await Supabase.instance.client
-          .from('child_profiles')
-          .select('id, name, parent_id')
-          .eq('is_active', true)
-          .not('pin_hash', 'is', null);
+      final result = await Supabase.instance.client.rpc(
+        'verify_child_pin',
+        params: {'p_child_id': _childId!, 'p_pin': pin},
+      ).maybeSingle();
 
-      dynamic matchedChild;
-      for (final child in children) {
-        final result = await Supabase.instance.client.rpc(
-          'verify_child_pin',
-          params: {
-            'p_child_id': child['id'] as String,
-            'p_pin': pin,
-          },
-        ).maybeSingle();
-        if (result != null && result['success'] == true) {
-          matchedChild = child;
-          break;
-        }
-      }
-
-      if (matchedChild != null && mounted) {
-        final childId = matchedChild['id'] as String;
-        final parentId = matchedChild['parent_id'] as String;
-        ref.read(verifiedChildIdProvider.notifier).state = childId;
-        widget.onVerified(childId, parentId);
-      } else if (mounted) {
-        setState(() => _error = 'PIN salah. Coba lagi ya!');
+      if (result != null && result['success'] == true) {
+        ref.read(verifiedChildIdProvider.notifier).state = _childId;
+        widget.onVerified(_childId!, _parentId!);
+      } else {
+        setState(() {
+          _error = 'PIN salah. Coba lagi ya!';
+          _isLoading = false;
+        });
       }
     } catch (_) {
-      if (mounted) setState(() => _error = 'Terjadi kesalahan');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      setState(() {
+        _error = 'Terjadi kesalahan';
+        _isLoading = false;
+      });
     }
   }
 
+  // ─── Build ──────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
+    if (_scannedPairingCode != null) {
+      return _buildPinInputView(context);
+    }
+    return _buildScannerView(context);
+  }
+
+  Widget _buildScannerView(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Center(
+
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(height: 16),
+            const Text('📷', style: TextStyle(fontSize: 64)),
+            const SizedBox(height: 12),
+            Text(
+              'Scan QR dari HP Orang Tua',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Buka aplikasi Growly Parent, pilih profil anak, lalu tampilkan QR.',
+              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+
+            // Camera scanner
+            if (_hasCameraError)
+              _cameraErrorView()
+            else
+              SizedBox(
+                width: 280,
+                height: 280,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: MobileScanner(
+                    onDetect: _onBarcodeDetected,
+                    errorBuilder: (_, __, ___) {
+                      // Camera unavailable — fall through to manual input
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) setState(() => _hasCameraError = true);
+                      });
+                      return const Center(child: CircularProgressIndicator());
+                    },
+                  ),
+                ),
+              ),
+
+            if (_isLoading) ...[
+              const SizedBox(height: 16),
+              const CircularProgressIndicator(),
+            ],
+
+            if (_error != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  _error!,
+                  style: TextStyle(color: Colors.red.shade800, fontSize: 13),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 16),
+            TextButton.icon(
+              onPressed: _showManualCodeInput,
+              icon: const Icon(Icons.keyboard),
+              label: const Text('Ketik kode manual'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _cameraErrorView() {
+    return Container(
+      width: 280,
+      height: 280,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text('🔒', style: TextStyle(fontSize: 64)),
-          const SizedBox(height: 16),
-          Text('Masukkan PIN', style: Theme.of(context).textTheme.titleLarge),
+          Icon(Icons.camera_alt_outlined, size: 48, color: Colors.grey.shade500),
           const SizedBox(height: 8),
           Text(
-            'untuk masuk ke akun Growly kamu',
-            style: TextStyle(color: cs.onSurfaceVariant),
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: 200,
-            child: TextField(
-              controller: _controller,
-              keyboardType: TextInputType.number,
-              textAlign: TextAlign.center,
-              obscureText: true,
-              maxLength: 6,
-              decoration: InputDecoration(
-                counterText: '',
-                hintText: '• • • •',
-                errorText: _error,
-              ),
-              onSubmitted: (_) => _verify(),
-            ),
-          ),
-          const SizedBox(height: 16),
-          FilledButton(
-            onPressed: _isLoading ? null : _verify,
-            child: _isLoading
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('Masuk'),
-          ),
-          const SizedBox(height: 16),
-          TextButton(
-            onPressed: () => _showForgotPinSheet(context),
-            child: const Text('Lupa PIN?'),
+            'Kamera tidak tersedia',
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPinInputView(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text('🔒', style: TextStyle(fontSize: 64)),
+            const SizedBox(height: 12),
+
+            // Child detected badge
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.green.shade200),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check_circle, color: Colors.green.shade600, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Profil: $_childName',
+                    style: TextStyle(
+                      color: Colors.green.shade800,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Masukkan PIN',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'untuk masuk ke akun Growly',
+              style: TextStyle(color: cs.onSurfaceVariant),
+            ),
+            const SizedBox(height: 24),
+
+            SizedBox(
+              width: 200,
+              child: TextField(
+                controller: _pinController,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                obscureText: true,
+                maxLength: 6,
+                autofocus: true,
+                decoration: InputDecoration(
+                  counterText: '',
+                  hintText: '• • • •',
+                  errorText: _error,
+                ),
+                onSubmitted: (_) => _verifyPin(),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            FilledButton(
+              onPressed: _isLoading ? null : _verifyPin,
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Masuk'),
+            ),
+
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: () => _showForgotPinSheet(context),
+              child: const Text('Lupa PIN?'),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () => setState(() {
+                _scannedPairingCode = null;
+                _childId = null;
+                _parentId = null;
+                _childName = null;
+                _pinController.clear();
+                _error = null;
+              }),
+              child: const Text('Scan QR lain'),
+            ),
+          ],
+        ),
       ),
     );
   }

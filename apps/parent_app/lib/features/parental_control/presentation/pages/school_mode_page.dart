@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:growly_core/growly_core.dart';
+import 'package:parent_app/features/children/providers/child_providers.dart';
 
 class SchoolModePage extends ConsumerStatefulWidget {
   final String childId;
@@ -151,7 +152,7 @@ class _SchoolModePageState extends ConsumerState<SchoolModePage> {
   }
 
   Future<void> _saveSchedule(int day, TimeOfDay start, TimeOfDay end, {Schedule? existing}) async {
-    final repo = ref.read(_scheduleRepoProvider);
+    final repo = ref.read(appRestrictionRepositoryProvider);
     final startStr = '${start.hour.toString().padLeft(2, '0')}:${start.minute.toString().padLeft(2, '0')}';
     final endStr = '${end.hour.toString().padLeft(2, '0')}:${end.minute.toString().padLeft(2, '0')}';
 
@@ -179,7 +180,7 @@ class _SchoolModePageState extends ConsumerState<SchoolModePage> {
   }
 
   Future<void> _toggleSchedule(Schedule s, bool enabled) async {
-    final repo = ref.read(_scheduleRepoProvider);
+    final repo = ref.read(appRestrictionRepositoryProvider);
     await repo.saveSchedule(s.copyWith(isEnabled: enabled));
     ref.invalidate(_schoolSchedulesProvider(widget.childId));
   }
@@ -187,11 +188,7 @@ class _SchoolModePageState extends ConsumerState<SchoolModePage> {
 
 final _schoolSchedulesProvider =
     FutureProvider.family<List<Schedule>, String>((ref, childId) async {
-  final repo = ref.watch(_scheduleRepoProvider);
+  final repo = ref.watch(appRestrictionRepositoryProvider);
   final (schedules, _) = await repo.getSchedules(childId);
   return (schedules ?? []).where((s) => s.mode == 'school').toList();
-});
-
-final _scheduleRepoProvider = Provider<IAppRestrictionRepository>((ref) {
-  return AppRestrictionRepositoryImpl();
 });

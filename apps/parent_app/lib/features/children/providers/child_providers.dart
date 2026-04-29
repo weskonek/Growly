@@ -26,6 +26,7 @@ class CreateChildNotifier extends AsyncNotifier<ChildProfile?> {
     required DateTime birthDate,
     String? avatarUrl,
     String? pin,
+    String? gender,
   }) async {
     state = const AsyncLoading();
     final user = Supabase.instance.client.auth.currentUser;
@@ -44,6 +45,8 @@ class CreateChildNotifier extends AsyncNotifier<ChildProfile?> {
       parentId: user.id,
       createdAt: DateTime.now(),
       settings: {},
+      pin: pin,
+      gender: gender,
     );
 
     final repository = ref.read(childRepositoryProvider);
@@ -72,6 +75,24 @@ class CreateChildNotifier extends AsyncNotifier<ChildProfile?> {
         });
       } catch (_) {
         // PIN set failed but child was created — non-critical, continue
+      }
+    }
+
+    // Generate and save pairing code for QR setup
+    if (result != null) {
+      try {
+        final code = await Supabase.instance.client.rpc('generate_pairing_code');
+        await Supabase.instance.client
+            .from('child_profiles')
+            .update({'pairing_code': code as String})
+            .eq('id', result.id);
+        // Refetch to get updated pairingCode
+        final repo = ref.read(childRepositoryProvider);
+        final (updated, _) = await repo.getChild(result.id);
+        state = AsyncData(updated!);
+        return updated;
+      } catch (_) {
+        // Pairing code generation failed — non-critical, return result without code
       }
     }
 

@@ -17,6 +17,8 @@ class ChildProfile {
   final String? pin;
   final Map<String, dynamic> settings;
   final bool safeModeEnabled;
+  final String? pairingCode;
+  final String? gender;
 
   const ChildProfile({
     required this.id,
@@ -30,6 +32,8 @@ class ChildProfile {
     this.pin,
     this.settings = const {},
     this.safeModeEnabled = false,
+    this.pairingCode,
+    this.gender,
   });
 
   factory ChildProfile.fromJson(Map<String, dynamic> json) {
@@ -47,6 +51,8 @@ class ChildProfile {
       pin: json['pin'] as String?,
       settings: (json['settings'] as Map<String, dynamic>?) ?? {},
       safeModeEnabled: json['safe_mode_enabled'] as bool? ?? false,
+      pairingCode: json['pairing_code'] as String?,
+      gender: json['gender'] as String?,
     );
   }
 
@@ -62,6 +68,8 @@ class ChildProfile {
       'updated_at': updatedAt?.toIso8601String(),
       'settings': settings,
       'safe_mode_enabled': safeModeEnabled,
+      'pairing_code': pairingCode,
+      'gender': gender,
     };
   }
 
@@ -103,6 +111,8 @@ class ChildProfile {
     String? pin,
     Map<String, dynamic>? settings,
     bool? safeModeEnabled,
+    String? pairingCode,
+    String? gender,
   }) {
     return ChildProfile(
       id: id ?? this.id,
@@ -116,6 +126,8 @@ class ChildProfile {
       pin: pin ?? this.pin,
       settings: settings ?? this.settings,
       safeModeEnabled: safeModeEnabled ?? this.safeModeEnabled,
+      pairingCode: pairingCode ?? this.pairingCode,
+      gender: gender ?? this.gender,
     );
   }
 }

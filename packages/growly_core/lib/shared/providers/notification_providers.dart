@@ -47,7 +47,7 @@ class NotificationRepositoryImpl implements INotificationRepository {
           .select()
           .maybeSingle();
       if (result == null) return (null, const DatabaseFailure(message: 'Notifikasi tidak ditemukan'));
-      return (NotificationModel.fromJson(result as Map<String, dynamic>), null);
+      return (NotificationModel.fromJson(Map<String, dynamic>.from(result)), null);
     } catch (e) {
       return (null, DatabaseFailure(message: e.toString()));
     }
