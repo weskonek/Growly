@@ -248,14 +248,23 @@ class _LessonPageState extends ConsumerState<LessonPage> {
     final step = _steps[_currentStep];
     final isLast = _currentStep == _steps.length - 1;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Belajar'),
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => context.go('/learning/subject/${widget.subjectId}'),
+    return PopScope(
+      canPop: _currentStep == 0,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final confirmed = await _showExitDialog(context);
+        if (confirmed && context.mounted) {
+          context.go('/learning/subject/${widget.subjectId}');
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Belajar'),
+          leading: IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () => context.go('/learning/subject/${widget.subjectId}'),
+          ),
         ),
-      ),
       body: Column(
         children: [
           // Progress dots
@@ -312,6 +321,27 @@ class _LessonPageState extends ConsumerState<LessonPage> {
           ),
         ],
       ),
+    ),
     );
   }
-}
+
+  Future<bool> _showExitDialog(BuildContext context) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Keluar dari pelajaran?'),
+            content: const Text('Progress-mu tidak akan tersimpan.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Batal'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Keluar'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
