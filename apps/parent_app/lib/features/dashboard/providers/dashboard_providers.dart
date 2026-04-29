@@ -57,18 +57,18 @@ final dashboardStatsProvider = FutureProvider<Map<String, dynamic>>((ref) async 
 });
 
 /// Risk indicators based on screen time vs learning balance
-final riskIndicatorsProvider = FutureProvider<List<String>>((ref) async {
+final riskIndicatorsProvider =
+    FutureProvider<List<RiskIndicator>>((ref) async {
   final user = SupabaseService.client.auth.currentUser;
   if (user == null) return [];
 
   final childrenAsync = ref.watch(childrenListProvider);
   final children = childrenAsync.valueOrNull ?? [];
+  if (children.isEmpty) return [];
 
-  // Read providers once outside the loop — ref.watch inside async loops causes unnecessary rebuilds
   final stRepo = ref.read(screenTimeRepositoryProvider);
   final lrRepo = ref.read(learningRepositoryProvider);
-
-  final risks = <String>[];
+  final risks = <RiskIndicator>[];
 
   for (final child in children) {
     final (st, _) = await stRepo.getDailyScreenTime(child.id, DateTime.now());
@@ -77,13 +77,81 @@ final riskIndicatorsProvider = FutureProvider<List<String>>((ref) async {
     final (stats, _) = await lrRepo.getStats(child.id);
     final learningMinutes = stats?['learningMinutes'] as int? ?? 0;
 
-    if (screenMinutes > 120 && learningMinutes < 30) {
-      risks.add('${child.name} sudah lebih dari 2 jam di layar hari ini');
+    // Rule 1: Screen time > 3 jam hari ini → 🔴 high
+    if (screenMinutes > 180) {
+      risks.add(RiskIndicator(
+        childName: child.name,
+        childId: child.id,
+        message: '${child.name} sudah ${screenMinutes ~/ 60}j di layar — lebih dari 3 jam.',
+        level: RiskLevel.high,
+      ));
     }
+
+    // Rule 2: Screen time > 2 jam + learning < 30 menit → 🟡 medium
+    if (screenMinutes > 120 && learningMinutes < 30) {
+      risks.add(RiskIndicator(
+        childName: child.name,
+        childId: child.id,
+        message: '${child.name} sudah lebih dari 2 jam di layar hari ini.',
+        level: RiskLevel.medium,
+      ));
+    }
+
+    // Rule 3: Belum belajar + screen > 1 jam → 🟡 medium
     if (learningMinutes == 0 && screenMinutes > 60) {
-      risks.add('${child.name} belum belajar sama sekali hari ini');
+      risks.add(RiskIndicator(
+        childName: child.name,
+        childId: child.id,
+        message: '${child.name} belum belajar sama sekali hari ini.',
+        level: RiskLevel.medium,
+      ));
+    }
+
+    // Rule 4: Cek 7 hari trend — screen time naik > 50% vs minggu lalu
+    final now = DateTime.now();
+    int totalLast7 = 0;
+    int totalPrev7 = 0;
+
+    for (int i = 0; i < 7; i++) {
+      final d = now.subtract(Duration(days: i));
+      final (daily, _) = await stRepo.getDailyScreenTime(child.id, d);
+      totalLast7 += daily?.totalMinutes ?? 0;
+    }
+    for (int i = 7; i < 14; i++) {
+      final d = now.subtract(Duration(days: i));
+      final (daily, _) = await stRepo.getDailyScreenTime(child.id, d);
+      totalPrev7 += daily?.totalMinutes ?? 0;
+    }
+
+    if (totalPrev7 > 0 && totalLast7 > totalPrev7 * 1.5) {
+      risks.add(RiskIndicator(
+        childName: child.name,
+        childId: child.id,
+        message:
+            'Waktu layar ${child.name} naik >50% dibanding minggu lalu.',
+        level: RiskLevel.medium,
+      ));
+    }
+
+    // Rule 5: Belajar 0 sesi dalam 7 hari → 🔴 high
+    final sevenDaysAgo = now.subtract(const Duration(days: 7));
+    final (sessions, _) = await lrRepo.getSessions(
+      child.id,
+      from: sevenDaysAgo,
+      to: now,
+    );
+    if ((sessions ?? []).isEmpty) {
+      risks.add(RiskIndicator(
+        childName: child.name,
+        childId: child.id,
+        message: '${child.name} belum ada sesi belajar dalam 7 hari terakhir.',
+        level: RiskLevel.high,
+      ));
     }
   }
+
+  // Sort: high first, then medium, then low
+  risks.sort((a, b) => a.level.index.compareTo(b.level.index));
   return risks;
 });
 

@@ -830,12 +830,10 @@ class _LauncherContent extends ConsumerWidget {
                 onTap: () => context.go('/rewards'),
               ),
               _LauncherCard(
-                emoji: '🎮',
-                label: 'Bermain',
+                emoji: '👤',
+                label: 'Profilku',
                 color: const Color(0xFF2ECC71),
-                onTap: isBlocked
-                    ? null
-                    : () => _showBlockedSnackbar(context, schedule?.mode),
+                onTap: () => context.go('/profile'),
               ),
             ],
           ),
@@ -886,19 +884,6 @@ class _LauncherContent extends ConsumerWidget {
       default:
         return 'Tanya AI';
     }
-  }
-
-  void _showBlockedSnackbar(BuildContext context, String? mode) {
-    final messages = {
-      'school': 'Sedang jam sekolah — belajar dulu ya! 📚',
-      'sleep': 'Sudah jam tidur — selamat malam! 🌙',
-    };
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(messages[mode] ?? 'Fitur ini sedang tidak tersedia.'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
   }
 }
 

@@ -122,10 +122,10 @@ class _ParentalControlPageState extends ConsumerState<ParentalControlPage> {
                 onTap: () => context.go('/parental-control/safe-mode/$_selectedChildId'),
               ),
               _ControlTile(
-                title: 'Lokasi & Perangkat',
+                title: 'Perangkat Terhubung',
                 subtitle: 'Kelola perangkat terdaftar',
                 icon: Icons.devices,
-                onTap: () => context.go('/parental-control/location/$_selectedChildId'),
+                onTap: () => context.go('/parental-control/devices/$_selectedChildId'),
               ),
             ],
           );

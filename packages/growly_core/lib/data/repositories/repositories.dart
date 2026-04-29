@@ -5,3 +5,6 @@ export 'app_restriction_repository_impl.dart';
 export 'badge_repository_impl.dart';
 export 'subscription_repository_impl.dart';
 export 'device_repository_impl.dart';
+export 'daily_quest_repository_impl.dart';
+export 'store_repository_impl.dart';
+export 'reward_box_repository_impl.dart';

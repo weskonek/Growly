@@ -22,16 +22,18 @@ final rewardSystemProvider = FutureProvider<RewardSystem>((ref) async {
   return reward ?? RewardSystem(childId: child.id);
 });
 
-/// All possible badges catalog (for locked badge display)
+/// All possible badges catalog — aligned with BadgeType enum (index 0-7)
 final allBadgesCatalogProvider =
     Provider<List<Map<String, dynamic>>>((ref) {
   return [
-    {'emoji': '⭐', 'name': 'Bintang Pertama', 'type': 0},
-    {'emoji': '📚', 'name': 'Pembaca Hebat', 'type': 1},
-    {'emoji': '🔢', 'name': 'Ahli Hitung', 'type': 2},
-    {'emoji': '🌍', 'name': 'Ilmuwan Kecil', 'type': 3},
-    {'emoji': '🎨', 'name': 'Seniman Muda', 'type': 4},
-    {'emoji': '🚀', 'name': 'Explorer', 'type': 5},
+    {'emoji': '🔥', 'name': 'Streak',          'type': 0},
+    {'emoji': '🎓', 'name': 'Master Topik',    'type': 1},
+    {'emoji': '✅', 'name': 'Target Harian',   'type': 2},
+    {'emoji': '📅', 'name': 'Target Mingguan', 'type': 3},
+    {'emoji': '⏱️', 'name': 'Jam Belajar',     'type': 4},
+    {'emoji': '⭐', 'name': 'Skor Sempurna',   'type': 5},
+    {'emoji': '📈', 'name': 'Konsisten',        'type': 6},
+    {'emoji': '🗺️', 'name': 'Penjelajah',      'type': 7},
   ];
 });
 

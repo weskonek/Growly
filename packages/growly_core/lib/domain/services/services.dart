@@ -1,0 +1,1 @@
+export 'badge_trigger_service.dart';

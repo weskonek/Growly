@@ -133,9 +133,76 @@ class _SafeModePageState extends ConsumerState<SafeModePage> {
                     children: apps.map((r) => _WhitelistAppTile(
                           restriction: r,
                           onDelete: () => _removeApp(r),
+                          onSetKiosk: () => _setKioskMode(r.appPackage),
                         )).toList(),
                   );
                 },
+              ),
+
+              // Kiosk Mode section
+              const SizedBox(height: 24),
+              const Divider(),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Icon(Icons.tablet_android, color: cs.primary, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Kiosk Mode',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Kunci perangkat ke 1 aplikasi saja. Anak tidak bisa keluar dari aplikasi ini.',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              ),
+              const SizedBox(height: 12),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      whitelistAsync.when(
+                        loading: () => const CircularProgressIndicator(),
+                        error: (_, __) => const Text('Gagal memuat daftar app'),
+                        data: (apps) {
+                          if (apps.isEmpty) {
+                            return Text(
+                              'Tambah aplikasi ke whitelist terlebih dahulu.',
+                              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                            );
+                          }
+                          final currentKiosk = child.kioskAppPackage;
+                          return DropdownButtonFormField<String>(
+                            initialValue: currentKiosk,
+                            isExpanded: true,
+                            decoration: const InputDecoration(
+                              labelText: 'Pilih Aplikasi',
+                              border: OutlineInputBorder(),
+                            ),
+                            hint: const Text('Nonaktif'),
+                            items: [
+                              const DropdownMenuItem(
+                                value: null,
+                                child: Text('Nonaktif'),
+                              ),
+                              ...apps.map((r) => DropdownMenuItem(
+                                    value: r.appPackage,
+                                    child: Text(r.appName ?? r.appPackage),
+                                  )),
+                            ],
+                            onChanged: (pkg) => _setKioskMode(pkg),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           );
@@ -278,13 +345,29 @@ class _SafeModePageState extends ConsumerState<SafeModePage> {
       ref.invalidate(_whitelistProvider(widget.childId));
     }
   }
+
+  Future<void> _setKioskMode(String? appPackage) async {
+    await SupabaseService.client
+        .from('child_profiles')
+        .update({
+          'kiosk_app_package': appPackage,
+          'updated_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', widget.childId);
+    ref.invalidate(_childProfileProvider(widget.childId));
+  }
 }
 
 class _WhitelistAppTile extends StatelessWidget {
   final AppRestriction restriction;
   final VoidCallback onDelete;
+  final VoidCallback onSetKiosk;
 
-  const _WhitelistAppTile({required this.restriction, required this.onDelete});
+  const _WhitelistAppTile({
+    required this.restriction,
+    required this.onDelete,
+    required this.onSetKiosk,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -297,9 +380,19 @@ class _WhitelistAppTile extends StatelessWidget {
         ),
         title: Text(restriction.appName ?? restriction.appPackage),
         subtitle: Text(restriction.appPackage, style: const TextStyle(fontSize: 12)),
-        trailing: IconButton(
-          icon: const Icon(Icons.delete_outline, color: Colors.red),
-          onPressed: onDelete,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.tablet_android_outlined, color: Colors.blue),
+              tooltip: 'Jadikan Kiosk',
+              onPressed: onSetKiosk,
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: Colors.red),
+              onPressed: onDelete,
+            ),
+          ],
         ),
       ),
     );

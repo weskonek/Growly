@@ -110,7 +110,7 @@ class RewardsPage extends ConsumerWidget {
             itemCount: catalog.length,
             itemBuilder: (context, i) {
               final badge = catalog[i];
-              final unlocked = unlockedIds.contains(badge['name']);
+              final unlocked = unlockedIds.contains(badge['type'] as int);
               return _BadgeCard(
                 emoji: badge['emoji'] as String,
                 label: badge['name'] as String,

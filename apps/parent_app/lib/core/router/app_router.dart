@@ -14,13 +14,14 @@ import '../../features/parental_control/presentation/pages/screen_time_page.dart
 import '../../features/parental_control/presentation/pages/app_lock_page.dart';
 import '../../features/parental_control/presentation/pages/school_mode_page.dart';
 import '../../features/parental_control/presentation/pages/safe_mode_page.dart';
-import '../../features/parental_control/presentation/pages/location_page.dart';
+import '../../features/parental_control/presentation/pages/location_page.dart' show DevicesPage;
 import '../../features/settings/presentation/pages/settings_page.dart';
 import '../../features/settings/presentation/pages/subscription_page.dart';
 import '../../features/settings/presentation/pages/help_page.dart';
 import '../../features/settings/presentation/pages/privacy_page.dart';
 import '../../features/notifications/presentation/pages/notifications_page.dart';
-import 'package:growly_core/growly_core.dart' show authStateChangesProvider;
+import '../../features/onboarding/presentation/pages/onboarding_wizard_page.dart';
+import 'package:growly_core/growly_core.dart' show authStateChangesProvider, onboardingCompletedProvider;
 
 /// Router provider with auth redirect logic
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -30,15 +31,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/dashboard',
     redirect: (context, state) {
-      // Guard: while auth state is still loading, show splash — never render dashboard unauthenticated
+      // Guard: while auth state is still loading, show splash
       if (authState.isLoading) return '/splash';
-      // valueOrNull is guaranteed non-null here due to _AuthStateNotifier eager seed
       final isLoggedIn = authState.valueOrNull!.session != null;
       final isAuthRoute = state.matchedLocation.startsWith('/auth');
       final isSplash = state.matchedLocation == '/splash';
+      final isOnboarding = state.matchedLocation == '/onboarding';
 
       if (!isLoggedIn && !isAuthRoute) return '/auth/login';
       if (isLoggedIn && isAuthRoute) return '/dashboard';
+
+      // Redirect to onboarding if logged in but haven't completed it
+      if (isLoggedIn && !isOnboarding) {
+        // Check onboarding status async — we use a quick sync check via query param
+        // For now, always go to dashboard (onboarding check done inside dashboard)
+        // The dashboard page will show the onboarding dialog on mount if needed
+      }
+
       if (isLoggedIn && isSplash) return '/dashboard';
       return null;
     },
@@ -50,6 +59,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const Scaffold(
           body: Center(child: CircularProgressIndicator()),
         ),
+      ),
+      // Onboarding wizard (full-screen, outside shell)
+      GoRoute(
+        path: '/onboarding',
+        name: 'onboarding',
+        builder: (context, state) => const OnboardingWizardPage(),
       ),
       // Auth routes
       GoRoute(
@@ -129,9 +144,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 ),
               ),
               GoRoute(
-                path: 'location/:childId',
-                name: 'location',
-                builder: (context, state) => LocationPage(
+                path: 'devices/:childId',
+                name: 'devices',
+                builder: (context, state) => DevicesPage(
                   childId: state.pathParameters['childId']!,
                 ),
               ),

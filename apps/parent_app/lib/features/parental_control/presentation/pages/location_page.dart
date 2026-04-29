@@ -3,215 +3,44 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:growly_core/growly_core.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 
-class LocationPage extends ConsumerStatefulWidget {
+/// Devices page — shows registered devices for this child profile.
+/// Previously misnamed "Lokasi" (Location). Actual GPS tracking
+/// is not implemented; this page manages device registration.
+class DevicesPage extends ConsumerStatefulWidget {
   final String childId;
 
-  const LocationPage({super.key, required this.childId});
+  const DevicesPage({super.key, required this.childId});
 
   @override
-  ConsumerState<LocationPage> createState() => _LocationPageState();
+  ConsumerState<DevicesPage> createState() => _DevicesPageState();
 }
 
-class _LocationPageState extends ConsumerState<LocationPage> {
+class _DevicesPageState extends ConsumerState<DevicesPage> {
   bool _isRegistering = false;
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final childAsync = ref.watch(_childProfileProvider(widget.childId));
     final devicesAsync = ref.watch(_devicesProvider(widget.childId));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Perangkat Terhubung')),
+      appBar: AppBar(
+        title: const Text('Perangkat Terhubung'),
+      ),
       body: childAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Gagal: $e')),
         data: (child) {
           if (child == null) return const Center(child: Text('Profil anak tidak ditemukan'));
-
-          return ListView(
-            padding: const EdgeInsets.all(24),
-            children: [
-              // Child info header
-              Card(
-                color: cs.primaryContainer,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        backgroundColor: cs.primary.withValues(alpha: 0.2),
-                        child: Text(child.avatarUrl ?? child.name[0].toUpperCase()),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              child.name,
-                              style: const TextStyle(fontWeight: FontWeight.w700),
-                            ),
-                            Text(
-                              child.ageDisplay,
-                              style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.green.shade100,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '${devicesAsync.valueOrNull?.length ?? 0} perangkat',
-                          style: TextStyle(fontSize: 12, color: Colors.green.shade800, fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Info card
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Icon(Icons.info_outline, color: Colors.blue.shade600),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Pantau dan kelola perangkat yang digunakan anak untuk mengakses Growly.',
-                          style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Devices list
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Daftar Perangkat',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                  if (_isRegistering)
-                    const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              devicesAsync.when(
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Text('Gagal memuat: $e'),
-                data: (devices) {
-                  if (devices.isEmpty) {
-                    return Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          children: [
-                            Icon(Icons.devices, size: 48, color: Colors.grey.shade400),
-                            const SizedBox(height: 12),
-                            Text(
-                              'Belum ada perangkat terdaftar',
-                              style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w600),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Daftarkan perangkat ini untuk mulai memantau.',
-                              style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-                            ),
-                            const SizedBox(height: 16),
-                            FilledButton.icon(
-                              onPressed: _isRegistering ? null : () => _registerCurrentDevice(context),
-                              icon: const Icon(Icons.add),
-                              label: const Text('Daftarkan Perangkat Ini'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }
-
-                  return Column(
-                    children: [
-                      ...devices.map((device) => _DeviceCard(
-                            device: device,
-                            onSetCurrent: () => _setCurrentDevice(device),
-                            onRemove: () => _removeDevice(device),
-                          )),
-                      const SizedBox(height: 16),
-                      OutlinedButton.icon(
-                        onPressed: _isRegistering ? null : () => _registerCurrentDevice(context),
-                        icon: const Icon(Icons.add),
-                        label: const Text('Tambah Perangkat Baru'),
-                      ),
-                    ],
-                  );
-                },
-              ),
-              const SizedBox(height: 24),
-
-              // Tips card
-              Card(
-                color: Colors.amber.shade50,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.lightbulb_outline, color: Colors.amber.shade800, size: 20),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Tips Keamanan',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              color: Colors.amber.shade900,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      _tip('Pastikan hanya perangkat Anda yang terdaftar'),
-                      _tip('Cabut perangkat yang tidak digunakan'),
-                      _tip('Perbarui aplikasi Growly secara berkala'),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+          return _DevicesTab(
+            child: child,
+            devicesAsync: devicesAsync,
+            isRegistering: _isRegistering,
+            onRegister: () => _registerCurrentDevice(context),
+            onSetCurrent: _setCurrentDevice,
+            onRemove: _removeDevice,
           );
         },
-      ),
-    );
-  }
-
-  Widget _tip(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('• ', style: TextStyle(color: Colors.amber.shade800)),
-          Expanded(child: Text(text, style: TextStyle(fontSize: 13, color: Colors.amber.shade900))),
-        ],
       ),
     );
   }
@@ -236,9 +65,7 @@ class _LocationPageState extends ConsumerState<LocationPage> {
           deviceName = iosInfo.name;
           deviceModel = iosInfo.model;
           osVersion = 'iOS ${iosInfo.systemVersion}';
-        } catch (_) {
-          // Fallback
-        }
+        } catch (_) {}
       }
 
       final device = DeviceModel(
@@ -319,6 +146,169 @@ class _LocationPageState extends ConsumerState<LocationPage> {
   }
 }
 
+// ==================== Devices Tab ====================
+
+class _DevicesTab extends StatelessWidget {
+  final ChildProfile child;
+  final AsyncValue<List<DeviceModel>> devicesAsync;
+  final bool isRegistering;
+  final VoidCallback onRegister;
+  final void Function(DeviceModel) onSetCurrent;
+  final void Function(DeviceModel) onRemove;
+
+  const _DevicesTab({
+    required this.child,
+    required this.devicesAsync,
+    required this.isRegistering,
+    required this.onRegister,
+    required this.onSetCurrent,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        // Child header
+        Card(
+          color: cs.primaryContainer,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: cs.primary.withValues(alpha: 0.2),
+                  child: Text(child.avatarUrl ?? child.name[0].toUpperCase()),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(child.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                      Text(child.ageDisplay, style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${devicesAsync.valueOrNull?.length ?? 0} perangkat',
+                    style: TextStyle(fontSize: 12, color: Colors.green.shade800, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        // Info card
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.blue.shade600),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Pantau dan kelola perangkat yang digunakan anak untuk mengakses Growly.',
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Daftar Perangkat', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+            if (isRegistering) const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        devicesAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Text('Gagal memuat: $e'),
+          data: (devices) {
+            if (devices.isEmpty) {
+              return Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    children: [
+                      Icon(Icons.devices, size: 48, color: Colors.grey.shade400),
+                      const SizedBox(height: 12),
+                      Text('Belum ada perangkat terdaftar', style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 4),
+                      Text('Daftarkan perangkat ini untuk mulai memantau.', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                      const SizedBox(height: 16),
+                      FilledButton.icon(onPressed: isRegistering ? null : onRegister, icon: const Icon(Icons.add), label: const Text('Daftarkan Perangkat Ini')),
+                    ],
+                  ),
+                ),
+              );
+            }
+            return Column(
+              children: [
+                ...devices.map((d) => _DeviceCard(device: d, onSetCurrent: () => onSetCurrent(d), onRemove: () => onRemove(d))),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(onPressed: isRegistering ? null : onRegister, icon: const Icon(Icons.add), label: const Text('Tambah Perangkat Baru')),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: 24),
+        // Tips
+        Card(
+          color: Colors.amber.shade50,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.lightbulb_outline, color: Colors.amber.shade800, size: 20),
+                    const SizedBox(width: 8),
+                    Text('Tips Keamanan', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.amber.shade900)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                _tip('Pastikan hanya perangkat Anda yang terdaftar'),
+                _tip('Cabut perangkat yang tidak digunakan'),
+                _tip('Perbarui aplikasi Growly secara berkala'),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _tip(String text) => Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('• ', style: TextStyle(color: Colors.amber.shade800)),
+            Expanded(child: Text(text, style: TextStyle(fontSize: 13, color: Colors.amber.shade900))),
+          ],
+        ),
+      );
+}
+
+// ==================== Device Card ====================
+
 class _DeviceCard extends StatelessWidget {
   final DeviceModel device;
   final VoidCallback onSetCurrent;
@@ -331,12 +321,18 @@ class _DeviceCard extends StatelessWidget {
   });
 
   IconData _deviceIcon() {
-    if (device.deviceModel?.toLowerCase().contains('tablet') ?? false) return Icons.tablet;
-    if (device.deviceModel?.toLowerCase().contains('sm-') ?? false) return Icons.smartphone;
+    final m = device.deviceModel?.toLowerCase() ?? '';
+    if (m.contains('tablet')) return Icons.tablet;
+    if (m.contains('sm-')) return Icons.smartphone;
     return Icons.phone_android;
   }
 
-  String _lastActive() {
+  bool _isOnline() {
+    if (device.lastActiveAt == null) return false;
+    return DateTime.now().difference(device.lastActiveAt!).inMinutes < 5;
+  }
+
+  String _lastActiveLabel() {
     if (device.lastActiveAt == null) return 'Tidak aktif';
     final diff = DateTime.now().difference(device.lastActiveAt!);
     if (diff.inMinutes < 5) return 'Baru saja';
@@ -347,18 +343,34 @@ class _DeviceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final online = _isOnline();
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
-            CircleAvatar(
-              backgroundColor: device.isCurrent ? Colors.green.shade100 : Colors.grey.shade100,
-              child: Icon(
-                _deviceIcon(),
-                color: device.isCurrent ? Colors.green : Colors.grey,
-              ),
+            Stack(
+              children: [
+                CircleAvatar(
+                  backgroundColor: device.isCurrent ? Colors.green.shade100 : Colors.grey.shade100,
+                  child: Icon(_deviceIcon(), color: device.isCurrent ? Colors.green : Colors.grey),
+                ),
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: online ? Colors.green : Colors.grey,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -367,24 +379,11 @@ class _DeviceCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Text(
-                        device.deviceName,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      Flexible(
+                        child: Text(device.deviceName, style: const TextStyle(fontWeight: FontWeight.w700), overflow: TextOverflow.ellipsis),
                       ),
-                      if (device.isCurrent) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade100,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            'Aktif',
-                            style: TextStyle(fontSize: 10, color: Colors.green.shade800, fontWeight: FontWeight.w700),
-                          ),
-                        ),
-                      ],
+                      const SizedBox(width: 6),
+                      Text(online ? 'Online' : 'Offline', style: TextStyle(fontSize: 10, color: online ? Colors.green : Colors.grey)),
                     ],
                   ),
                   const SizedBox(height: 2),
@@ -392,24 +391,13 @@ class _DeviceCard extends StatelessWidget {
                     [device.deviceModel, device.osVersion].whereType<String>().join(' • '),
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                   ),
-                  Text(
-                    'Terakhir aktif: ${_lastActive()}',
-                    style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
-                  ),
+                  Text('Terakhir aktif: ${_lastActiveLabel()}', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
                 ],
               ),
             ),
             if (!device.isCurrent)
-              IconButton(
-                icon: const Icon(Icons.check_circle_outline, size: 20),
-                tooltip: 'Tandai aktif',
-                onPressed: onSetCurrent,
-              ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
-              tooltip: 'Cabut perangkat',
-              onPressed: onRemove,
-            ),
+              IconButton(icon: const Icon(Icons.check_circle_outline, size: 20), tooltip: 'Tandai aktif', onPressed: onSetCurrent),
+            IconButton(icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red), tooltip: 'Cabut perangkat', onPressed: onRemove),
           ],
         ),
       ),
@@ -417,7 +405,8 @@ class _DeviceCard extends StatelessWidget {
   }
 }
 
-// Providers
+// ==================== Providers ====================
+
 final _childProfileProvider = FutureProvider.family<ChildProfile?, String>((ref, childId) async {
   final repo = ref.watch(_childRepoProvider);
   final (child, _) = await repo.getChild(childId);
@@ -430,10 +419,6 @@ final _devicesProvider = FutureProvider.family<List<DeviceModel>, String>((ref, 
   return devices ?? [];
 });
 
-final _deviceRepoProvider = Provider<IDeviceRepository>((ref) {
-  return DeviceRepositoryImpl();
-});
+final _deviceRepoProvider = Provider<IDeviceRepository>((ref) => DeviceRepositoryImpl());
 
-final _childRepoProvider = Provider<IChildRepository>((ref) {
-  return ChildRepositoryImpl(SupabaseService.client);
-});
+final _childRepoProvider = Provider<IChildRepository>((ref) => ChildRepositoryImpl(SupabaseService.client));

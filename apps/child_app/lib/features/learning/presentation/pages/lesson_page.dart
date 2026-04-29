@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:growly_core/growly_core.dart' hide learningRepositoryProvider;
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:child_app/features/learning/providers/learning_providers.dart';
 import 'package:child_app/features/rewards/providers/rewards_providers.dart';
 import 'package:child_app/core/router/child_router.dart' show verifiedChildIdProvider;
@@ -97,27 +99,120 @@ class _LessonPageState extends ConsumerState<LessonPage> {
 
     setState(() => _completed = true);
 
-    final repo = ref.read(badgeRepositoryProvider);
+    final badgeRepo = ref.read(badgeRepositoryProvider);
+    final badgeService = const BadgeTriggerService();
 
-    // Idempotency: only award if lesson not yet completed for this child
-    final (progressList, _) = await repo.getBadges(childId);
-    final alreadyHasLessonBadge = (progressList ?? []).any(
-      (b) => b.metadata['lesson_id'] == widget.lessonId,
+    // ── Load current stats for badge evaluation ──────────────────
+    final (reward, _) = await badgeRepo.getRewardSystem(childId);
+    final (badges, _) = await badgeRepo.getBadges(childId);
+    final existingBadges = badges ?? [];
+    final todaySessions = await _getTodaySessionCount(childId);
+
+    // ── Complete lesson in DB (atomic streak + stars update) ────────
+    await badgeRepo.completeLesson(childId, widget.lessonId, 10);
+
+    // ── Evaluate badge triggers ───────────────────────────────────
+    final result = await badgeService.evaluate(
+      childId: childId,
+      currentStreak: reward?.currentStreak ?? 0,
+      sessionsToday: todaySessions,
+      completedAllInTopic: false, // TODO: check if topic fully completed
+      allAnswersCorrect: false,   // TODO: wire from quiz result
+      topicsExplored: 1,          // TODO: count from learning_progress
+      totalMinutesToday: 0,       // TODO: sum from learning_sessions
+      existingBadges: existingBadges,
     );
 
-    if (!alreadyHasLessonBadge) {
-      // Atomic: streak + stars in one DB call, no race condition
-      await repo.completeLesson(childId, widget.lessonId, 10);
-
-      // Invalidate rewards so the celebration dialog triggers
-      ref.invalidate(badgesProvider);
+    // ── Award newly earned badges + insert parent notification ──────
+    for (final badge in result.newlyEarned) {
+      await badgeRepo.awardBadge(badge);
+      if (mounted) await _notifyParent(childId, badge.name, badge.emoji);
     }
 
+    // ── Refresh rewards UI ─────────────────────────────────────────
+    ref.invalidate(badgesProvider);
+    ref.invalidate(rewardSystemProvider);
+
     if (!mounted) return;
+
+    // ── Show celebration if badges earned ──────────────────────────
+    if (result.hasNewBadges) {
+      await _showBadgeCelebration(context, result);
+    }
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Hebat! Kamu sudah selesai belajar! 🎉')),
     );
     context.go('/learning/subject/${widget.subjectId}');
+  }
+
+  Future<int> _getTodaySessionCount(String childId) async {
+    try {
+      final today = DateTime.now().toIso8601String().split('T')[0];
+      final resp = await Supabase.instance.client
+          .from('learning_sessions')
+          .select('id')
+          .eq('child_id', childId)
+          .gte('started_at', '${today}T00:00:00');
+      return (resp as List).length;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  Future<void> _notifyParent(String childId, String badgeName, String badgeEmoji) async {
+    try {
+      // Look up parent_id for this child, then insert notification
+      final childResp = await Supabase.instance.client
+          .from('child_profiles')
+          .select('parent_id')
+          .eq('id', childId)
+          .maybeSingle();
+      if (childResp == null) return;
+      final parentId = childResp['parent_id'] as String?;
+      if (parentId == null) return;
+
+      await Supabase.instance.client.from('notifications').insert({
+        'parent_id': parentId,
+        'title': '$badgeEmoji Badge Diraih!',
+        'body': ' anak berhasil mendapat badge "$badgeName". Lihat di menu Anak!',
+        'type': 'achievement',
+        'is_read': false,
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _showBadgeCelebration(BuildContext context, BadgeEarnResult result) async {
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(children: [
+          const Text('🎉'),
+          const SizedBox(width: 8),
+          const Text('Badge Diraih!'),
+        ]),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          for (final badge in result.newlyEarned)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(children: [
+                Text(badge.emoji, style: const TextStyle(fontSize: 28)),
+                const SizedBox(width: 12),
+                Expanded(child: Text(badge.name, style: const TextStyle(fontSize: 16))),
+              ]),
+            ),
+          const SizedBox(height: 8),
+          if (result.celebrationMessage != null)
+            Text(result.celebrationMessage!, style: const TextStyle(fontStyle: FontStyle.italic)),
+        ]),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Hebat! 🔥'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

@@ -130,6 +130,8 @@ class RewardSystem {
   final int totalStars;
   final List<String> unlockedBadges;
   final DateTime? lastActivityAt;
+  /// Streak protection shields. Earn 1 shield every 7-day streak (max 3).
+  final int streakShields;
 
   const RewardSystem({
     required this.childId,
@@ -138,6 +140,7 @@ class RewardSystem {
     this.totalStars = 0,
     this.unlockedBadges = const [],
     this.lastActivityAt,
+    this.streakShields = 0,
   });
 
   factory RewardSystem.fromJson(Map<String, dynamic> json) {
@@ -153,6 +156,7 @@ class RewardSystem {
       lastActivityAt: json['last_activity_at'] != null
           ? DateTime.parse(json['last_activity_at'] as String)
           : null,
+      streakShields: json['streak_shields'] as int? ?? 0,
     );
   }
 
@@ -164,6 +168,7 @@ class RewardSystem {
       'total_stars': totalStars,
       'unlocked_badges': unlockedBadges,
       'last_activity_at': lastActivityAt?.toIso8601String(),
+      'streak_shields': streakShields,
     };
   }
 
@@ -174,6 +179,7 @@ class RewardSystem {
     int? totalStars,
     List<String>? unlockedBadges,
     DateTime? lastActivityAt,
+    int? streakShields,
   }) {
     return RewardSystem(
       childId: childId ?? this.childId,
@@ -182,6 +188,7 @@ class RewardSystem {
       totalStars: totalStars ?? this.totalStars,
       unlockedBadges: unlockedBadges ?? this.unlockedBadges,
       lastActivityAt: lastActivityAt ?? this.lastActivityAt,
+      streakShields: streakShields ?? this.streakShields,
     );
   }
 }

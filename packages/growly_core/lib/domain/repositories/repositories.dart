@@ -4,3 +4,6 @@ export 'screen_time_repository.dart';
 export 'app_restriction_repository.dart';
 export 'badge_repository.dart';
 export 'subscription_repository.dart';
+export 'daily_quest_repository.dart';
+export 'store_repository.dart';
+export 'reward_box_repository.dart';

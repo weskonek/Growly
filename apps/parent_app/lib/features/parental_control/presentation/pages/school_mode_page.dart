@@ -38,19 +38,31 @@ class _SchoolModePageState extends ConsumerState<SchoolModePage> {
             itemBuilder: (context, index) {
               final s = schedules[index];
               final dayName = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
-              return Card(
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: s.isEnabled ? Colors.blue.shade100 : Colors.grey.shade200,
-                    child: const Icon(Icons.school, color: Colors.blue),
+              return Dismissible(
+                key: Key(s.id),
+                direction: DismissDirection.endToStart,
+                background: Container(
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.only(right: 20),
+                  color: Colors.red,
+                  child: const Icon(Icons.delete, color: Colors.white),
+                ),
+                confirmDismiss: (_) async => await _confirmDelete(s),
+                onDismissed: (_) => _deleteSchedule(s),
+                child: Card(
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: s.isEnabled ? Colors.blue.shade100 : Colors.grey.shade200,
+                      child: const Icon(Icons.school, color: Colors.blue),
+                    ),
+                    title: Text(dayName[s.dayOfWeek - 1]),
+                    subtitle: Text('${s.startTime} - ${s.endTime}'),
+                    trailing: Switch(
+                      value: s.isEnabled,
+                      onChanged: (v) => _toggleSchedule(s, v),
+                    ),
+                    onTap: () => _showScheduleSheet(context, existing: s),
                   ),
-                  title: Text('${dayName[s.dayOfWeek - 1]}'),
-                  subtitle: Text('${s.startTime} - ${s.endTime}'),
-                  trailing: Switch(
-                    value: s.isEnabled,
-                    onChanged: (v) => _toggleSchedule(s, v),
-                  ),
-                  onTap: () => _showScheduleSheet(context, existing: s),
                 ),
               );
             },
@@ -156,6 +168,44 @@ class _SchoolModePageState extends ConsumerState<SchoolModePage> {
     final startStr = '${start.hour.toString().padLeft(2, '0')}:${start.minute.toString().padLeft(2, '0')}';
     final endStr = '${end.hour.toString().padLeft(2, '0')}:${end.minute.toString().padLeft(2, '0')}';
 
+    // Overlap validation — check same-day schedules
+    final (allSchedules, _) = await repo.getSchedules(widget.childId);
+    final schoolSchedules = (allSchedules ?? [])
+        .where((s) => s.mode == 'school' && s.dayOfWeek == day && s.id != existing?.id)
+        .toList();
+
+    bool overlaps(int h1, int m1, int h2, int m2) {
+      final mins1 = h1 * 60 + m1;
+      final mins2 = h2 * 60 + m2;
+      final startMins = start.hour * 60 + start.minute;
+      final endMins = end.hour * 60 + end.minute;
+      return startMins < mins2 && endMins > mins1;
+    }
+
+    final newStartH = int.parse(startStr.split(':')[0]);
+    final newStartM = int.parse(startStr.split(':')[1]);
+    final newEndH = int.parse(endStr.split(':')[0]);
+    final newEndM = int.parse(endStr.split(':')[1]);
+
+    for (final s in schoolSchedules) {
+      final sStartH = int.parse(s.startTime.split(':')[0]);
+      final sStartM = int.parse(s.startTime.split(':')[1]);
+      final sEndH = int.parse(s.endTime.split(':')[0]);
+      final sEndM = int.parse(s.endTime.split(':')[1]);
+
+      if (overlaps(newStartH, newStartM, sEndH, sEndM) ||
+          overlaps(sStartH, sStartM, newEndH, newEndM)) {
+        final dayNames = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Jadwal overlap dengan jadwal ${dayNames[day - 1]} (${s.startTime}-${s.endTime})'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+    }
+
     if (existing != null) {
       final updated = existing.copyWith(
         dayOfWeek: day,
@@ -181,7 +231,34 @@ class _SchoolModePageState extends ConsumerState<SchoolModePage> {
 
   Future<void> _toggleSchedule(Schedule s, bool enabled) async {
     final repo = ref.read(appRestrictionRepositoryProvider);
-    await repo.saveSchedule(s.copyWith(isEnabled: enabled));
+    await repo.updateSchedule(s.copyWith(isEnabled: enabled));
+    ref.invalidate(_schoolSchedulesProvider(widget.childId));
+  }
+
+  Future<bool> _confirmDelete(Schedule s) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hapus Jadwal?'),
+        content: Text('Hapus jadwal ${s.startTime} - ${s.endTime}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Hapus', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
+  }
+
+  Future<void> _deleteSchedule(Schedule s) async {
+    final repo = ref.read(appRestrictionRepositoryProvider);
+    await repo.deleteSchedule(s.id);
     ref.invalidate(_schoolSchedulesProvider(widget.childId));
   }
 }

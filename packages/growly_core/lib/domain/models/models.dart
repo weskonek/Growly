@@ -1,5 +1,6 @@
 export 'child_insight.dart';
 export 'child_profile.dart';
+export 'risk_indicator.dart';
 export 'learning_progress.dart';
 export 'screen_time.dart';
 export 'app_restriction.dart';
@@ -7,3 +8,6 @@ export 'badge.dart';
 export 'subscription_model.dart';
 export 'notification_model.dart';
 export 'device_model.dart';
+export 'store_item.dart';
+export 'daily_quest.dart';
+export 'reward_box.dart';

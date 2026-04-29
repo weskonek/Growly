@@ -97,6 +97,18 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
   }
 }
 
+// ──────────────────────────────────────────────────────────────────
+// DEVELOPMENT MODE: Payment gateway is not yet integrated.
+// All features are unlocked. This bottom sheet activates premium
+// tier locally for development/testing purposes only.
+//
+// When payment gateway is ready:
+// 1. Replace the upgrade button with a real payment flow (Midtrans)
+// 2. Remove this dev-mode bottom sheet
+// 3. Set kIsDevelopment = false
+// ──────────────────────────────────────────────────────────────────
+const kIsDevelopment = true;
+
 class _UpgradeBottomSheet extends ConsumerStatefulWidget {
   final SubscriptionTier currentTier;
 
@@ -107,15 +119,11 @@ class _UpgradeBottomSheet extends ConsumerStatefulWidget {
 }
 
 class _UpgradeBottomSheetState extends ConsumerState<_UpgradeBottomSheet> {
-  String _selectedPayment = 'transfer';
   bool _isProcessing = false;
-  String? _error;
 
   Future<void> _processUpgrade() async {
-    setState(() {
-      _isProcessing = true;
-      _error = null;
-    });
+    if (!kIsDevelopment) return; // Safety: do nothing in production
+    setState(() => _isProcessing = true);
 
     final success = await ref.read(upgradeSubscriptionProvider.notifier).upgrade('premium_family');
 
@@ -182,7 +190,7 @@ class _UpgradeBottomSheetState extends ConsumerState<_UpgradeBottomSheet> {
               _PlanFeatureItem(emoji: '👶', title: 'Anak Tanpa Batas', desc: 'Tambahkan profil anak tanpa batas.'),
               _PlanFeatureItem(emoji: '🤖', title: 'AI Tutor Tanpa Batas', desc: 'Belajar dengan bantuan AI tanpa batasan.'),
               _PlanFeatureItem(emoji: '📊', title: 'Laporan Lengkap', desc: 'Lacak progress belajar anak setiap hari.'),
-              _PlanFeatureItem(emoji: '🛡️', title: 'Kontrol Orang Tua Lengkap', desc: 'Mode sekolah, kunci aplikasi, & lokasi.'),
+              _PlanFeatureItem(emoji: '🛡️', title: 'Kontrol Orang Tua Lengkap', desc: 'Mode sekolah, kunci aplikasi, & perangkat.'),
               const SizedBox(height: 24),
               Card(
                 color: cs.primaryContainer,
@@ -210,46 +218,76 @@ class _UpgradeBottomSheetState extends ConsumerState<_UpgradeBottomSheet> {
                 ),
               ),
               const SizedBox(height: 24),
-              Text('Pilih Metode Pembayaran', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-              const SizedBox(height: 12),
-              _PaymentOption(
-                icon: Icons.account_balance,
-                label: 'Transfer Bank',
-                sublabel: 'BCA, Mandiri, BNI, BRI',
-                selected: _selectedPayment == 'transfer',
-                onTap: () => setState(() => _selectedPayment = 'transfer'),
-              ),
-              _PaymentOption(
-                icon: Icons.qr_code,
-                label: 'QRIS',
-                sublabel: 'Semua e-wallet & mobile banking',
-                selected: _selectedPayment == 'qris',
-                onTap: () => setState(() => _selectedPayment = 'qris'),
-              ),
-              _PaymentOption(
-                icon: Icons.credit_card,
-                label: 'Kartu Kredit',
-                sublabel: 'Segera Hadir',
-                selected: _selectedPayment == 'card',
-                enabled: false,
-                onTap: () {},
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 8),
-                Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 13)),
+              if (kIsDevelopment) ...[
+                // ── DEV MODE: no payment gateway yet ──────────────────────
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.amber.shade200),
+                  ),
+                  child: Row(children: [
+                    Icon(Icons.build_circle, color: Colors.amber.shade700),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'MODE DEVELOPMENT — Semua fitur premium aktif tanpa batas. '
+                        'Integrasi payment gateway akan ditambahkan saat mendekati launch.',
+                        style: TextStyle(fontSize: 12, color: Colors.amber),
+                      ),
+                    ),
+                  ]),
+                ),
+                const SizedBox(height: 20),
+                FilledButton.icon(
+                  onPressed: _isProcessing ? null : _processUpgrade,
+                  icon: _isProcessing
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.workspace_premium),
+                  label: Text(_isProcessing ? 'Mengaktifkan...' : 'Aktifkan Premium (Dev)'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.amber.shade700,
+                    minimumSize: const Size.fromHeight(48),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Nanti dulu'),
+                ),
+              ] else ...[
+                // ── PRODUCTION: real payment flow (Midtrans) ────────────────
+                Text('Pilih Metode Pembayaran', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 12),
+                _PaymentOption(
+                  icon: Icons.account_balance,
+                  label: 'Transfer Bank',
+                  sublabel: 'BCA, Mandiri, BNI, BRI',
+                  selected: false,
+                  onTap: () {},
+                ),
+                _PaymentOption(
+                  icon: Icons.qr_code,
+                  label: 'QRIS',
+                  sublabel: 'Semua e-wallet & mobile banking',
+                  selected: false,
+                  onTap: () {},
+                ),
+                _PaymentOption(
+                  icon: Icons.credit_card,
+                  label: 'Kartu Kredit',
+                  sublabel: 'Segera Hadir',
+                  selected: false,
+                  enabled: false,
+                  onTap: () {},
+                ),
+                const SizedBox(height: 24),
+                FilledButton(
+                  onPressed: null, // disabled until payment gateway wired
+                  child: const Text('Segera Hadir'),
+                ),
               ],
-              const SizedBox(height: 24),
-              FilledButton(
-                onPressed: _isProcessing ? null : _processUpgrade,
-                child: _isProcessing
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Text('Konfirmasi Pembayaran'),
-              ),
-              const SizedBox(height: 12),
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Nanti dulu'),
-              ),
               const SizedBox(height: 16),
             ],
           ),
@@ -413,7 +451,7 @@ class _ComparisonTable extends StatelessWidget {
             const Divider(height: 24),
             const _ComparisonRow(feature: 'Laporan Belajar', freeValue: 'Dasar', premiumValue: 'Lengkap', isPremiumBetter: true),
             const Divider(height: 24),
-            const _ComparisonRow(feature: 'Kontrol Orang Tua', freeValue: 'Dasar', premiumValue: 'Lengkap + Lokasi', isPremiumBetter: true),
+            const _ComparisonRow(feature: 'Kontrol Orang Tua', freeValue: 'Dasar', premiumValue: 'Lengkap + Perangkat', isPremiumBetter: true),
             const Divider(height: 24),
             const _ComparisonRow(feature: 'Mode Sekolah', freeValue: '-', premiumValue: 'Tersedia', isPremiumBetter: true),
           ],

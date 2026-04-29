@@ -17,8 +17,10 @@ class ChildProfile {
   final String? pin;
   final Map<String, dynamic> settings;
   final bool safeModeEnabled;
+  final String? kioskAppPackage;
   final String? pairingCode;
   final String? gender;
+  final String? avatarItemId;
 
   const ChildProfile({
     required this.id,
@@ -32,8 +34,10 @@ class ChildProfile {
     this.pin,
     this.settings = const {},
     this.safeModeEnabled = false,
+    this.kioskAppPackage,
     this.pairingCode,
     this.gender,
+    this.avatarItemId,
   });
 
   factory ChildProfile.fromJson(Map<String, dynamic> json) {
@@ -51,8 +55,10 @@ class ChildProfile {
       pin: json['pin'] as String?,
       settings: (json['settings'] as Map<String, dynamic>?) ?? {},
       safeModeEnabled: json['safe_mode_enabled'] as bool? ?? false,
+      kioskAppPackage: json['kiosk_app_package'] as String?,
       pairingCode: json['pairing_code'] as String?,
       gender: json['gender'] as String?,
+      avatarItemId: json['avatar_item_id'] as String?,
     );
   }
 
@@ -68,8 +74,10 @@ class ChildProfile {
       'updated_at': updatedAt?.toIso8601String(),
       'settings': settings,
       'safe_mode_enabled': safeModeEnabled,
+      'kiosk_app_package': kioskAppPackage,
       'pairing_code': pairingCode,
       'gender': gender,
+      'avatar_item_id': avatarItemId,
     };
   }
 
@@ -111,8 +119,10 @@ class ChildProfile {
     String? pin,
     Map<String, dynamic>? settings,
     bool? safeModeEnabled,
+    String? kioskAppPackage,
     String? pairingCode,
     String? gender,
+    String? avatarItemId,
   }) {
     return ChildProfile(
       id: id ?? this.id,
@@ -126,8 +136,10 @@ class ChildProfile {
       pin: pin ?? this.pin,
       settings: settings ?? this.settings,
       safeModeEnabled: safeModeEnabled ?? this.safeModeEnabled,
+      kioskAppPackage: kioskAppPackage ?? this.kioskAppPackage,
       pairingCode: pairingCode ?? this.pairingCode,
       gender: gender ?? this.gender,
+      avatarItemId: avatarItemId ?? this.avatarItemId,
     );
   }
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:growly_core/growly_core.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:growly_core/growly_core.dart';
 
 class ScreenTimePage extends ConsumerStatefulWidget {
   final String childId;
@@ -189,51 +189,27 @@ class _ScreenTimePageState extends ConsumerState<ScreenTimePage> {
                 const SizedBox(height: 16),
                 SizedBox(
                   height: 200,
-                  child: BarChart(
-                    BarChartData(
-                      gridData: const FlGridData(show: false),
-                      titlesData: FlTitlesData(
-                        leftTitles:
-                            AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                        rightTitles:
-                            AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                        topTitles:
-                            AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            getTitlesWidget: (value, meta) {
-                              return Text(
-                                  ['S', 'M', 'T', 'W', 'F', 'S', 'S']
-                                      [value.toInt() % 7]);
-                            },
-                          ),
-                        ),
-                      ),
-                      borderData: FlBorderData(show: false),
-                      barGroups: List.generate(
-                        7,
-                        (i) => BarChartGroupData(
-                          x: i,
-                          barRods: [
-                            BarChartRodData(
-                              toY: (i + 1) * 20.0,
-                              color: cs.primary.withValues(alpha: 0.8),
-                              width: 20,
-                              borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(6)),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+                  child: _WeeklyChart(childId: widget.childId),
                 ),
               ],
             ),
     );
   }
 }
+
+/// 7-day screen time minutes for chart, oldest to newest
+final _weeklyChartProvider =
+    FutureProvider.family<List<double>, String>((ref, childId) async {
+  final repo = ref.read(_screenTimeRepoProvider);
+  final now = DateTime.now();
+  final result = <double>[];
+  for (int i = 6; i >= 0; i--) {
+    final date = now.subtract(Duration(days: i));
+    final (daily, _) = await repo.getDailyScreenTime(childId, date);
+    result.add((daily?.totalMinutes ?? 0).toDouble());
+  }
+  return result;
+});
 
 final _todayScreenTimeProvider =
     FutureProvider.family<int, String>((ref, childId) async {
@@ -250,3 +226,73 @@ final _screenTimeRestrictionRepoProvider =
     Provider<IAppRestrictionRepository>((ref) {
   return AppRestrictionRepositoryImpl();
 });
+
+class _WeeklyChart extends ConsumerWidget {
+  final String childId;
+
+  const _WeeklyChart({required this.childId});
+
+  static const _dayLabels = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final chartAsync = ref.watch(_weeklyChartProvider(childId));
+    final cs = Theme.of(context).colorScheme;
+
+    return chartAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text('Error: $e')),
+      data: (data) {
+        final maxY = data.fold(0.0, (a, b) => a > b ? a : b);
+        final maxAxisY = maxY == 0 ? 120.0 : maxY * 1.2;
+
+        return BarChart(
+          BarChartData(
+            gridData: const FlGridData(show: false),
+            titlesData: FlTitlesData(
+              leftTitles:
+                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles:
+                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              topTitles:
+                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  getTitlesWidget: (value, meta) {
+                    final idx = value.toInt();
+                    if (idx < 0 || idx >= 7) return const SizedBox();
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(
+                        _dayLabels[idx],
+                        style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            borderData: FlBorderData(show: false),
+            barGroups: List.generate(7, (i) {
+              final minutes = i < data.length ? data[i] : 0.0;
+              return BarChartGroupData(
+                x: i,
+                barRods: [
+                  BarChartRodData(
+                    toY: minutes,
+                    color: cs.primary.withValues(alpha: 0.8),
+                    width: 20,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                  ),
+                ],
+              );
+            }),
+            maxY: maxAxisY,
+          ),
+        );
+      },
+    );
+  }
+}
+
