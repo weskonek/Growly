@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -14,6 +15,73 @@ class ChildLauncherPage extends ConsumerStatefulWidget {
 }
 
 class _ChildLauncherPageState extends ConsumerState<ChildLauncherPage> {
+  RealtimeConnectionStatus _connectionStatus = RealtimeConnectionStatus.connecting;
+  StreamSubscription<RealtimeSubscribeEvent>? _channelSubscription;
+
+  @override
+  void dispose() {
+    _channelSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _subscribeToChildSync(String childId) {
+    _channelSubscription?.cancel();
+
+    final client = Supabase.instance.client;
+    final channel = client.channel('child-sync-$childId');
+
+    channel.onPostgresChanges(
+      event: PostgresChangeEvent.all,
+      schema: 'public',
+      table: 'app_restrictions',
+      filter: PostgresChangeFilter(
+        type: PostgresChangeFilterType.eq,
+        column: 'child_id',
+        value: childId,
+      ),
+      callback: (_) => ref.invalidate(activeScheduleProvider),
+    );
+
+    channel.onPostgresChanges(
+      event: PostgresChangeEvent.all,
+      schema: 'public',
+      table: 'schedules',
+      filter: PostgresChangeFilter(
+        type: PostgresChangeFilterType.eq,
+        column: 'child_id',
+        value: childId,
+      ),
+      callback: (_) {
+        ref.invalidate(activeScheduleProvider);
+        ref.invalidate(screenTimeRemainingProvider);
+      },
+    );
+
+    channel.onPostgresChanges(
+      event: PostgresChangeEvent.all,
+      schema: 'public',
+      table: 'screen_time_records',
+      filter: PostgresChangeFilter(
+        type: PostgresChangeFilterType.eq,
+        column: 'child_id',
+        value: childId,
+      ),
+      callback: (_) => ref.invalidate(screenTimeRemainingProvider),
+    );
+
+    channel.subscribe().then((status) {
+      if (!mounted) return;
+      setState(() {
+        _connectionStatus = status == RealtimeChannelStatus.ok
+            ? RealtimeConnectionStatus.connected
+            : RealtimeConnectionStatus.disconnected;
+      });
+    }).catchError((_) {
+      if (mounted) {
+        setState(() => _connectionStatus = RealtimeConnectionStatus.disconnected);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,15 +100,26 @@ class _ChildLauncherPageState extends ConsumerState<ChildLauncherPage> {
               if (child == null) {
                 return _PinGate(onVerified: (childId) {
                   ref.invalidate(currentChildProvider);
+                  _subscribeToChildSync(childId);
                 });
               }
-              return _LauncherContent(child: child, childId: child.id);
+              return _LauncherContent(
+                child: child,
+                childId: child.id,
+                connectionStatus: _connectionStatus,
+              );
             },
           ),
         ),
       ),
     );
   }
+}
+
+enum RealtimeConnectionStatus {
+  connecting,
+  connected,
+  disconnected,
 }
 
 class _PinGate extends ConsumerStatefulWidget {
@@ -52,7 +131,7 @@ class _PinGate extends ConsumerStatefulWidget {
   ConsumerState<_PinGate> createState() => _PinGateState();
 }
 
-class _PinGateState extends ConsumerState<_PinGate> {
+class _PinGateState extends ConsumerStatefulWidget {
   final _controller = TextEditingController();
   bool _isLoading = false;
   String? _error;
@@ -73,7 +152,6 @@ class _PinGateState extends ConsumerState<_PinGate> {
     });
 
     try {
-      // Fetch active children — id + name only; NEVER fetch pin_hash to client
       final children = await Supabase.instance.client
           .from('child_profiles')
           .select('id, name')
@@ -192,8 +270,13 @@ class _PinGateState extends ConsumerState<_PinGate> {
 class _LauncherContent extends ConsumerWidget {
   final ChildProfile child;
   final String childId;
+  final RealtimeConnectionStatus connectionStatus;
 
-  const _LauncherContent({required this.child, required this.childId});
+  const _LauncherContent({
+    required this.child,
+    required this.childId,
+    required this.connectionStatus,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -242,10 +325,16 @@ class _LauncherContent extends ConsumerWidget {
                 ),
               ],
             ),
-            CircleAvatar(
-              radius: 28,
-              backgroundColor: cs.primary,
-              child: Text(child.avatarUrl ?? '👦', style: const TextStyle(fontSize: 28)),
+            Row(
+              children: [
+                _ConnectionBadge(status: connectionStatus),
+                const SizedBox(width: 8),
+                CircleAvatar(
+                  radius: 28,
+                  backgroundColor: cs.primary,
+                  child: Text(child.avatarUrl ?? '👦', style: const TextStyle(fontSize: 28)),
+                ),
+              ],
             ),
           ],
         ),
@@ -264,7 +353,7 @@ class _LauncherContent extends ConsumerWidget {
               ),
               _LauncherCard(
                 emoji: '🤖',
-                label: 'Tanya AI',
+                label: _aiLabelForAge(child.ageGroup),
                 color: const Color(0xFF9B59B6),
                 onTap: () => context.go('/ai-tutor'),
               ),
@@ -322,6 +411,17 @@ class _LauncherContent extends ConsumerWidget {
     );
   }
 
+  String _aiLabelForAge(AgeGroup ageGroup) {
+    switch (ageGroup) {
+      case AgeGroup.earlyChildhood:
+        return 'Cerita Bareng';
+      case AgeGroup.primary:
+        return 'Cerita Bareng';
+      default:
+        return 'Tanya AI';
+    }
+  }
+
   void _showBlockedSnackbar(BuildContext context, String? mode) {
     final messages = {
       'school': 'Sedang jam sekolah — belajar dulu ya! 📚',
@@ -332,6 +432,28 @@ class _LauncherContent extends ConsumerWidget {
         content: Text(messages[mode] ?? 'Fitur ini sedang tidak tersedia.'),
         behavior: SnackBarBehavior.floating,
       ),
+    );
+  }
+}
+
+class _ConnectionBadge extends StatelessWidget {
+  final RealtimeConnectionStatus status;
+
+  const _ConnectionBadge({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final (icon, label, color) = switch (status) {
+      RealtimeConnectionStatus.connected =>
+        ('🟢', 'Terhubung', Colors.green),
+      RealtimeConnectionStatus.disconnected =>
+        ('🔴', 'Offline', Colors.grey),
+      RealtimeConnectionStatus.connecting =>
+        ('🟡', 'Menghubungi...', Colors.orange),
+    };
+    return Tooltip(
+      message: label,
+      child: Text(icon, style: const TextStyle(fontSize: 16)),
     );
   }
 }
