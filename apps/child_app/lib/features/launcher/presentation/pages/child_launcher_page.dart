@@ -16,71 +16,70 @@ class ChildLauncherPage extends ConsumerStatefulWidget {
 
 class _ChildLauncherPageState extends ConsumerState<ChildLauncherPage> {
   RealtimeConnectionStatus _connectionStatus = RealtimeConnectionStatus.connecting;
-  StreamSubscription<RealtimeSubscribeEvent>? _channelSubscription;
+  RealtimeChannel? _syncChannel;
 
   @override
   void dispose() {
-    _channelSubscription?.cancel();
+    _syncChannel?.unsubscribe();
     super.dispose();
   }
 
   void _subscribeToChildSync(String childId) {
-    _channelSubscription?.cancel();
+    _syncChannel?.unsubscribe();
 
     final client = Supabase.instance.client;
-    final channel = client.channel('child-sync-$childId');
-
-    channel.onPostgresChanges(
-      event: PostgresChangeEvent.all,
-      schema: 'public',
-      table: 'app_restrictions',
-      filter: PostgresChangeFilter(
-        type: PostgresChangeFilterType.eq,
-        column: 'child_id',
-        value: childId,
-      ),
-      callback: (_) => ref.invalidate(activeScheduleProvider),
-    );
-
-    channel.onPostgresChanges(
-      event: PostgresChangeEvent.all,
-      schema: 'public',
-      table: 'schedules',
-      filter: PostgresChangeFilter(
-        type: PostgresChangeFilterType.eq,
-        column: 'child_id',
-        value: childId,
-      ),
-      callback: (_) {
-        ref.invalidate(activeScheduleProvider);
-        ref.invalidate(screenTimeRemainingProvider);
-      },
-    );
-
-    channel.onPostgresChanges(
-      event: PostgresChangeEvent.all,
-      schema: 'public',
-      table: 'screen_time_records',
-      filter: PostgresChangeFilter(
-        type: PostgresChangeFilterType.eq,
-        column: 'child_id',
-        value: childId,
-      ),
-      callback: (_) => ref.invalidate(screenTimeRemainingProvider),
-    );
-
-    channel.subscribe().then((status) {
-      if (!mounted) return;
-      setState(() {
-        _connectionStatus = status == RealtimeChannelStatus.ok
-            ? RealtimeConnectionStatus.connected
-            : RealtimeConnectionStatus.disconnected;
-      });
-    }).catchError((_) {
-      if (mounted) {
-        setState(() => _connectionStatus = RealtimeConnectionStatus.disconnected);
-      }
-    });
+    _syncChannel = client
+        .channel('child-sync-$childId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'app_restrictions',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'child_id',
+            value: childId,
+          ),
+          callback: (_) {
+            if (mounted) ref.invalidate(activeScheduleProvider);
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'schedules',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'child_id',
+            value: childId,
+          ),
+          callback: (_) {
+            if (mounted) {
+              ref.invalidate(activeScheduleProvider);
+              ref.invalidate(screenTimeRemainingProvider);
+            }
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'screen_time_records',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'child_id',
+            value: childId,
+          ),
+          callback: (_) {
+            if (mounted) ref.invalidate(screenTimeRemainingProvider);
+          },
+        )
+        .subscribe((status, error) {
+          if (!mounted) return;
+          if (status == 'SUBSCRIBED') {
+            setState(() => _connectionStatus = RealtimeConnectionStatus.connected);
+          } else {
+            setState(() => _connectionStatus = RealtimeConnectionStatus.disconnected);
+          }
+        });
   }
 
   @override
@@ -131,7 +130,7 @@ class _PinGate extends ConsumerStatefulWidget {
   ConsumerState<_PinGate> createState() => _PinGateState();
 }
 
-class _PinGateState extends ConsumerStatefulWidget {
+class _PinGateState extends ConsumerState<_PinGate> {
   final _controller = TextEditingController();
   bool _isLoading = false;
   String? _error;
@@ -443,13 +442,10 @@ class _ConnectionBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (icon, label, color) = switch (status) {
-      RealtimeConnectionStatus.connected =>
-        ('🟢', 'Terhubung', Colors.green),
-      RealtimeConnectionStatus.disconnected =>
-        ('🔴', 'Offline', Colors.grey),
-      RealtimeConnectionStatus.connecting =>
-        ('🟡', 'Menghubungi...', Colors.orange),
+    final (icon, label) = switch (status) {
+      RealtimeConnectionStatus.connected => ('🟢', 'Terhubung'),
+      RealtimeConnectionStatus.disconnected => ('🔴', 'Offline'),
+      RealtimeConnectionStatus.connecting => ('🟡', 'Menghubungi...'),
     };
     return Tooltip(
       message: label,
