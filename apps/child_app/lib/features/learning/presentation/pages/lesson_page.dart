@@ -265,7 +265,7 @@ class _LessonPageState extends ConsumerState<LessonPage> {
             onPressed: () => context.go('/learning/subject/${widget.subjectId}'),
           ),
         ),
-      body: Column(
+        body: Column(
         children: [
           // Progress dots
           Padding(
