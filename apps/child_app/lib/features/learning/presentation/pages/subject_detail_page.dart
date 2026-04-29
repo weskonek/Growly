@@ -105,8 +105,6 @@ class _SubjectDetailPageState extends ConsumerState<SubjectDetailPage> {
         },
       ),
     );
-  }
-}
 
 class _LessonCard extends StatelessWidget {
   final String emoji, title, subtitle, duration;
