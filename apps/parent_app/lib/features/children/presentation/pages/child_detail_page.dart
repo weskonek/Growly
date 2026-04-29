@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:growly_core/growly_core.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../providers/child_providers.dart' show selectedChildDetailProvider, updateChildProvider, deleteChildProvider;
+import '../../providers/child_providers.dart'
+    show selectedChildDetailProvider, updateChildProvider, deleteChildProvider;
+import 'tabs/activity_tab.dart';
+import 'tabs/insight_tab.dart';
 
 class ChildDetailPage extends ConsumerStatefulWidget {
   final String childId;
@@ -14,21 +17,23 @@ class ChildDetailPage extends ConsumerStatefulWidget {
   ConsumerState<ChildDetailPage> createState() => _ChildDetailPageState();
 }
 
-class _ChildDetailPageState extends ConsumerState<ChildDetailPage> {
+class _ChildDetailPageState extends ConsumerState<ChildDetailPage>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   bool _isEditing = false;
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
-  DateTime? _birthDate;
-  String? _avatarUrl;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 3, vsync: this);
     _nameController = TextEditingController();
   }
 
   @override
   void dispose() {
+    _tabController.dispose();
     _nameController.dispose();
     super.dispose();
   }
@@ -55,13 +60,21 @@ class _ChildDetailPageState extends ConsumerState<ChildDetailPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Detail Profil Anak'),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'Profil'),
+            Tab(text: 'Aktivitas'),
+            Tab(text: 'Insight'),
+          ],
+        ),
         actions: [
-          if (!_isEditing)
+          if (!_isEditing && _tabController.index == 0)
             IconButton(
               icon: const Icon(Icons.edit),
               onPressed: () => setState(() => _isEditing = true),
             )
-          else
+          else if (_tabController.index == 0)
             IconButton(
               icon: const Icon(Icons.close),
               onPressed: () {
@@ -78,20 +91,22 @@ class _ChildDetailPageState extends ConsumerState<ChildDetailPage> {
           if (child == null) {
             return const Center(child: Text('Profil tidak ditemukan'));
           }
-
-          if (!_isEditing && _nameController.text.isEmpty) {
-            _nameController.text = child.name;
-            _birthDate = child.birthDate;
-            _avatarUrl = child.avatarUrl;
-          }
-
-          return _isEditing ? _buildEditMode(child) : _buildViewMode(child);
+          return TabBarView(
+            controller: _tabController,
+            children: [
+              _isEditing
+                  ? _buildEditMode(child)
+                  : _buildProfileTab(child),
+              ActivityTab(childId: widget.childId),
+              InsightTab(childId: widget.childId),
+            ],
+          );
         },
       ),
     );
   }
 
-  Widget _buildViewMode(ChildProfile child) {
+  Widget _buildProfileTab(ChildProfile child) {
     final cs = Theme.of(context).colorScheme;
     final ageGroupLabel = switch (child.ageGroup) {
       AgeGroup.earlyChildhood => '2-5 tahun (Batita)',
@@ -100,22 +115,25 @@ class _ChildDetailPageState extends ConsumerState<ChildDetailPage> {
       AgeGroup.teen => '13-18 tahun (Remaja)',
     };
 
+    if (_nameController.text.isEmpty) {
+      _nameController.text = child.name;
+    }
+
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        // Avatar
         Center(
           child: CircleAvatar(
             radius: 56,
             backgroundColor: cs.primaryContainer,
-            backgroundImage: child.avatarUrl != null ? NetworkImage(child.avatarUrl!) : null,
+            backgroundImage:
+                child.avatarUrl != null ? NetworkImage(child.avatarUrl!) : null,
             child: child.avatarUrl == null
                 ? Text(child.avatarUrl ?? '👦', style: const TextStyle(fontSize: 48))
                 : null,
           ),
         ),
         const SizedBox(height: 24),
-        // Name
         Center(
           child: Text(
             child.name,
@@ -134,7 +152,6 @@ class _ChildDetailPageState extends ConsumerState<ChildDetailPage> {
           ),
         ),
         const SizedBox(height: 32),
-        // Info cards
         _InfoTile(
           icon: Icons.cake_outlined,
           label: 'Usia',
@@ -143,7 +160,8 @@ class _ChildDetailPageState extends ConsumerState<ChildDetailPage> {
         _InfoTile(
           icon: Icons.calendar_today_outlined,
           label: 'Tanggal Lahir',
-          value: '${child.birthDate.day}/${child.birthDate.month}/${child.birthDate.year}',
+          value:
+              '${child.birthDate.day}/${child.birthDate.month}/${child.birthDate.year}',
         ),
         const _InfoTile(
           icon: Icons.check_circle_outline,
@@ -151,7 +169,6 @@ class _ChildDetailPageState extends ConsumerState<ChildDetailPage> {
           value: 'Aktif',
         ),
         const SizedBox(height: 32),
-        // Action buttons
         OutlinedButton.icon(
           onPressed: () => context.go('/parental-control'),
           icon: const Icon(Icons.security),
@@ -170,7 +187,7 @@ class _ChildDetailPageState extends ConsumerState<ChildDetailPage> {
           label: const Text('Reset PIN Anak'),
         ),
         const SizedBox(height: 12),
-        DestructiveButton(
+        _DestructiveButton(
           label: 'Hapus Profil',
           onPressed: () => _confirmDelete(child),
         ),
@@ -230,7 +247,8 @@ class _ChildDetailPageState extends ConsumerState<ChildDetailPage> {
     );
 
     if (confirmed != true) return;
-    final success = await ref.read(deleteChildProvider.notifier).deleteChild(child.id);
+    final success =
+        await ref.read(deleteChildProvider.notifier).deleteChild(child.id);
     if (!mounted) return;
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -239,7 +257,8 @@ class _ChildDetailPageState extends ConsumerState<ChildDetailPage> {
       context.go('/children');
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal menghapus profil'), backgroundColor: Colors.red),
+        const SnackBar(
+            content: Text('Gagal menghapus profil'), backgroundColor: Colors.red),
       );
     }
   }
@@ -300,7 +319,8 @@ class _ChildDetailPageState extends ConsumerState<ChildDetailPage> {
 
     if (!mounted) return;
     final success = result?[0]?['success'] == true || result?['success'] == true;
-    final message = result?[0]?['message'] ?? result?['message'] ?? (success ? 'PIN berhasil diubah' : 'Gagal');
+    final message =
+        result?[0]?['message'] ?? result?['message'] ?? (success ? 'PIN berhasil diubah' : 'Gagal');
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -339,7 +359,8 @@ class _ChildDetailPageState extends ConsumerState<ChildDetailPage> {
 
     if (!mounted) return;
     final success = result?[0]?['success'] == true || result?['success'] == true;
-    final message = result?[0]?['message'] ?? result?['message'] ?? (success ? 'PIN direset' : 'Gagal reset PIN');
+    final message =
+        result?[0]?['message'] ?? result?['message'] ?? (success ? 'PIN direset' : 'Gagal reset PIN');
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
@@ -351,7 +372,8 @@ class _InfoTile extends StatelessWidget {
   final String label;
   final String value;
 
-  const _InfoTile({required this.icon, required this.label, required this.value});
+  const _InfoTile(
+      {required this.icon, required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -370,11 +392,11 @@ class _InfoTile extends StatelessWidget {
   }
 }
 
-class DestructiveButton extends StatelessWidget {
+class _DestructiveButton extends StatelessWidget {
   final String label;
   final VoidCallback onPressed;
 
-  const DestructiveButton({super.key, required this.label, required this.onPressed});
+  const _DestructiveButton({required this.label, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
