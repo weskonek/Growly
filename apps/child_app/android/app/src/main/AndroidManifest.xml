@@ -29,6 +29,10 @@
         android:enabled="true"
         android:allowBackup="true">
 
+        <meta-data
+            android:name="io.flutter.embedding.android.EnableImpeller"
+            android:value="false" />
+
         <!-- ==================== MAIN ACTIVITY ==================== -->
         <activity
             android:name=".MainActivity"
