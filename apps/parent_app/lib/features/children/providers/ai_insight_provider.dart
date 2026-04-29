@@ -29,12 +29,8 @@ class AiInsightRepository {
 
       final response = await _client.functions.invoke(
         'generate-child-insights',
+        headers: {'Authorization': 'Bearer ${user.id}'},
         body: {'childId': childId},
-        options: FunctionInvokeOptions(
-          headers: {
-            'Authorization': 'Bearer ${user.id}',
-          },
-        ),
       );
 
       if (response.data == null) return null;
