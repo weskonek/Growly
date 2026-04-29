@@ -17,17 +17,19 @@ class _SubjectDetailPageState extends ConsumerState<SubjectDetailPage> {
   Widget build(BuildContext context) {
     final subjectsAsync = ref.watch(subjectsProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(subjectsAsync.whenOrNull(
-              data: (list) => list.firstWhere(
-                (s) => s['id'] == widget.subjectId,
-                orElse: () => {'title': 'Materi'},
-              )['title'] as String,
-            ) ??
-            'Materi'),
-      ),
-      body: subjectsAsync.when(
+    return PopScope(
+      canPop: true,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(subjectsAsync.whenOrNull(
+                data: (list) => list.firstWhere(
+                  (s) => s['id'] == widget.subjectId,
+                  orElse: () => {'title': 'Materi'},
+                )['title'] as String,
+              ) ??
+              'Materi'),
+        ),
+        body: subjectsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (subjects) {
