@@ -48,6 +48,7 @@ class CreateChildNotifier extends AsyncNotifier<ChildProfile?> {
 
     final repository = ref.read(childRepositoryProvider);
     final (result, failure) = await repository.createChild(child);
+
     if (failure != null) {
       final msg = failure.message.toLowerCase();
       if (msg.contains('limit') || msg.contains('p0001')) {
@@ -60,6 +61,20 @@ class CreateChildNotifier extends AsyncNotifier<ChildProfile?> {
       }
       return null;
     }
+
+    // Set PIN if provided — call set_child_pin RPC
+    if (pin != null && pin.isNotEmpty && result != null) {
+      try {
+        await Supabase.instance.client.rpc('set_child_pin', params: {
+          'p_child_id': result.id,
+          'p_pin': pin,
+          'p_parent_id': user.id,
+        });
+      } catch (_) {
+        // PIN set failed but child was created — non-critical, continue
+      }
+    }
+
     ref.invalidate(childrenListProvider);
     ref.invalidate(canAddChildProvider);
     state = AsyncData(result!);
