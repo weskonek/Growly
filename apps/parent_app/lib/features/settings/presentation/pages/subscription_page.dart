@@ -1,8 +1,6 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:growly_core/growly_core.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/providers/subscription_provider.dart';
 
 class SubscriptionPage extends ConsumerStatefulWidget {
@@ -131,6 +129,15 @@ class _UpgradeBottomSheetState extends ConsumerState<_UpgradeBottomSheet> {
       SnackBar(content: Text('Payment gateway: $_selectedPayment selected — wire WebView here')),
     );
     Navigator.pop(ctx);
+  }
+
+  Future<void> _processUpgrade() async {
+    if (!kIsDevelopment) return;
+    setState(() => _isProcessing = true);
+    final success = await ref.read(upgradeSubscriptionProvider.notifier).upgrade('premium_family');
+    if (!mounted) return;
+    setState(() => _isProcessing = false);
+    if (success) Navigator.pop(context);
   }
 
   @override
@@ -424,6 +431,13 @@ class _CurrentPlanCard extends StatelessWidget {
                 ),
               ),
             ),
+            if (sub != null && sub!.currentPeriodEnd != null && tier != SubscriptionTier.free) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Berakhir: ${_formatDate(sub!.currentPeriodEnd)}',
+                style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
+              ),
+            ],
           ],
         ),
       ),
