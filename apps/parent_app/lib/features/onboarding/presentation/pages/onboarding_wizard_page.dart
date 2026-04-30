@@ -5,8 +5,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:growly_core/growly_core.dart';
 import 'package:parent_app/features/children/providers/child_providers.dart';
 
-final _onboardingProgressProvider = StateProvider<int>((ref) => 1);
-
 class OnboardingWizardPage extends ConsumerStatefulWidget {
   const OnboardingWizardPage({super.key});
 
