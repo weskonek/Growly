@@ -886,7 +886,7 @@ class _LauncherContent extends ConsumerWidget {
                     ? null
                     : () => context.go('/home'),
                 disabledReason: isBlocked
-                    ? 'Mode ${schedule?.mode == 'school' ? 'Sekolah' : 'Tidur'} aktif'
+                    ? 'Mode ${schedule.mode == 'school' ? 'Sekolah' : 'Tidur'} aktif'
                     : remaining <= 0
                         ? 'Waktu layar habis'
                         : null,

@@ -86,7 +86,6 @@ class _NotificationTile extends ConsumerWidget {
       case NotificationType.subscription:
         return Icons.star;
       case NotificationType.info:
-      default:
         return Icons.info_outline;
     }
   }
@@ -102,7 +101,6 @@ class _NotificationTile extends ConsumerWidget {
       case NotificationType.subscription:
         return Colors.purple;
       case NotificationType.info:
-      default:
         return Colors.blue;
     }
   }
