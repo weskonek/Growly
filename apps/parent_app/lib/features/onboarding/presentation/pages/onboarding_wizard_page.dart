@@ -18,10 +18,63 @@ class _OnboardingWizardPageState extends ConsumerState<OnboardingWizardPage> {
 
   void _nextStep() async {
     if (_currentStep < 6) {
-      // Persist current step completion (skip step 1 — welcome only)
       if (_currentStep >= 2) await _markCurrentStepComplete(_currentStep);
+      // Persist sub-step data before advancing
+      if (_currentStep == 3) await _saveScreenTimeRules();
+      if (_currentStep == 5) await _saveSchoolSchedule();
       setState(() => _currentStep++);
     }
+  }
+
+  Future<void> _saveScreenTimeRules() async {
+    final childId = await _getFirstChildId();
+    if (childId == null) return;
+    final stState = ref.read(_screenTimeStateProvider);
+    await Supabase.instance.client.from('screen_time_rules').upsert({
+      'child_id': childId,
+      'daily_limit_minutes': stState.dailyLimitHours * 60,
+      'bedtime_enabled': stState.bedtimeEnabled,
+      'bedtime_start': stState.bedtimeStart,
+      'bedtime_end': stState.bedtimeEnd,
+      'updated_at': DateTime.now().toISOString(),
+    }, onConflict: 'child_id');
+  }
+
+  Future<void> _saveSchoolSchedule() async {
+    final childId = await _getFirstChildId();
+    if (childId == null) return;
+    final schState = ref.read(_schoolStateProvider);
+    if (!schState.enabled) return;
+    final days = <int>[];
+    if (schState.monEnabled) days.add(1);
+    if (schState.tueEnabled) days.add(2);
+    if (schState.wedEnabled) days.add(3);
+    if (schState.thuEnabled) days.add(4);
+    if (schState.friEnabled) days.add(5);
+    for (final day in days) {
+      await Supabase.instance.client.from('schedules').upsert({
+        'child_id': childId,
+        'day_of_week': day,
+        'start_time': schState.start,
+        'end_time': schState.end,
+        'mode': 'school',
+        'is_enabled': true,
+        'label': 'Mode Sekolah',
+      }, onConflict: 'child_id,day_of_week,mode');
+    }
+  }
+
+  Future<String?> _getFirstChildId() async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return null;
+    final resp = await Supabase.instance.client
+        .from('child_profiles')
+        .select('id')
+        .eq('parent_id', userId)
+        .eq('is_active', true)
+        .limit(1)
+        .maybeSingle();
+    return resp?['id'] as String?;
   }
 
   Future<void> _markCurrentStepComplete(int step) async {
