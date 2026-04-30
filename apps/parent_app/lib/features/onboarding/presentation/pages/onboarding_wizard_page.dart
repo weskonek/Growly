@@ -5,6 +5,39 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:growly_core/growly_core.dart';
 import 'package:parent_app/features/children/providers/child_providers.dart';
 
+// ── Shared state providers so wizard parent can read sub-step data ──────────
+
+class _ScreenTimeData {
+  final int dailyLimitHours;
+  final bool bedtimeEnabled;
+  final TimeOfDay bedtimeStart;
+  final TimeOfDay bedtimeEnd;
+  const _ScreenTimeData({
+    this.dailyLimitHours = 2,
+    this.bedtimeEnabled = false,
+    this.bedtimeStart = const TimeOfDay(hour: 20, minute: 0),
+    this.bedtimeEnd = const TimeOfDay(hour: 7, minute: 0),
+  });
+}
+
+final _screenTimeStateProvider = StateProvider<_ScreenTimeData>((ref) => const _ScreenTimeData());
+
+class _SchoolData {
+  final bool enabled;
+  final String start;
+  final String end;
+  final bool monEnabled, tueEnabled, wedEnabled, thuEnabled, friEnabled;
+  const _SchoolData({
+    this.enabled = false,
+    this.start = '07:00',
+    this.end = '15:00',
+    this.monEnabled = true, this.tueEnabled = true, this.wedEnabled = true,
+    this.thuEnabled = true, this.friEnabled = true,
+  });
+}
+
+final _schoolStateProvider = StateProvider<_SchoolData>((ref) => const _SchoolData());
+
 class OnboardingWizardPage extends ConsumerStatefulWidget {
   const OnboardingWizardPage({super.key});
 
@@ -36,7 +69,7 @@ class _OnboardingWizardPageState extends ConsumerState<OnboardingWizardPage> {
       'bedtime_enabled': stState.bedtimeEnabled,
       'bedtime_start': stState.bedtimeStart,
       'bedtime_end': stState.bedtimeEnd,
-      'updated_at': DateTime.now().toISOString(),
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
     }, onConflict: 'child_id');
   }
 
@@ -607,7 +640,10 @@ class _ScreenTimeOnboardingStepState extends ConsumerState<_ScreenTimeOnboarding
                   max: 6,
                   divisions: 6,
                   label: '$_dailyLimitHours jam',
-                  onChanged: (v) => setState(() => _dailyLimitHours = v.round()),
+                  onChanged: (v) {
+                    setState(() => _dailyLimitHours = v.round());
+                    _syncToProvider();
+                  },
                 ),
                 if (_dailyLimitHours == 0)
                   Container(
