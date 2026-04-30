@@ -630,8 +630,7 @@ class _AppLockOnboardingStep extends ConsumerStatefulWidget {
 }
 
 class _AppLockOnboardingStepState extends ConsumerState<_AppLockOnboardingStep> {
-  bool _whitelistMode = true; // true = whitelist (only allowed apps), false = blacklist (only blocked)
-  final Set<String> _selectedPackages = {};
+  bool _whitelistMode = true;
 
   @override
   Widget build(BuildContext context) {
@@ -821,16 +820,5 @@ class _SchoolModeOnboardingStepState extends ConsumerState<_SchoolModeOnboarding
       final time = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
       if (isStart) _schoolStart = time; else _schoolEnd = time;
     });
-  }
-
-  Future<void> _markStepComplete(int step) async {
-    final userId = Supabase.instance.client.auth.currentUser?.id;
-    if (userId == null) return;
-    await Supabase.instance.client.from('onboarding_steps').upsert({
-      'parent_id': userId,
-      'step_number': step,
-      'completed': true,
-      'completed_at': DateTime.now().toIso8601String(),
-    }, onConflict: 'parent_id,step_number');
   }
 }
