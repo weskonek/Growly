@@ -26,6 +26,19 @@ import '../../features/onboarding/presentation/pages/onboarding_wizard_page.dart
 import '../../features/family_rewards/presentation/pages/reward_box_page.dart';
 import 'package:growly_core/growly_core.dart' show authStateChangesProvider, onboardingCompletedProvider;
 
+/// Resolves the initial location after both auth and onboarding state are available.
+/// Used by main.dart to seed the router's initialLocation before ProviderScope builds.
+final initialLocationProvider = FutureProvider<String>((ref) async {
+  final authState = await ref.watch(authStateChangesProvider.future);
+  final isLoggedIn = authState.session != null;
+
+  if (!isLoggedIn) return '/auth/login';
+
+  final onb = await ref.watch(onboardingCompletedProvider.future);
+  if (!onb) return '/onboarding';
+  return '/dashboard';
+});
+
 /// Router provider with auth redirect logic
 final appRouterProvider = Provider<GoRouter>((ref) {
   // Watch pending deep link from FCM notification tap
@@ -52,7 +65,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       if (!isLoggedIn && !isAuthRoute) return '/auth/login';
       if (isLoggedIn && isAuthRoute) return '/dashboard';
-      if (isLoggedIn && isSplash) return '/dashboard';
+      if (isLoggedIn && isSplash) {
+        // Check if onboarding is needed — redirect to onboarding if not completed
+        final onb = await ref.read(onboardingCompletedProvider.future);
+        if (!onb) return '/onboarding';
+        return '/dashboard';
+      }
       return null;
     },
     routes: [
