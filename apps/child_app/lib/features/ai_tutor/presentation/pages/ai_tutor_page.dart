@@ -91,9 +91,18 @@ class _AiTutorPageState extends ConsumerState<AiTutorPage> {
         ? 'Aku akan cerita cerita seru! Ketik tema yang kamu mau ya!'
         : 'Aku akan memberi petunjuk, bukan langsung jawab ya! Supaya kamu makin pintar 😊';
 
-    return Scaffold(
-      appBar: AppBar(
-        title: isYoungChild
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final confirmed = await _showExitDialog(context);
+        if (confirmed && context.mounted) {
+          context.go('/tutor');
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: isYoungChild
             ? Row(
                 children: [
                   CircleAvatar(
