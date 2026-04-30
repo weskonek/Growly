@@ -434,7 +434,7 @@ class _CurrentPlanCard extends StatelessWidget {
             if (sub != null && sub!.currentPeriodEnd != null && tier != SubscriptionTier.free) ...[
               const SizedBox(height: 4),
               Text(
-                'Berakhir: ${_formatDate(sub!.currentPeriodEnd)}',
+                'Berakhir: ${_formatDate(sub!.currentPeriodEnd!)}',
                 style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
               ),
             ],
@@ -503,6 +503,11 @@ class _ComparisonRow extends StatelessWidget {
       ],
     );
   }
+}
+
+String _formatDate(DateTime dt) {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+  return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
 }
 
 String _tierDisplayName(SubscriptionTier tier) {

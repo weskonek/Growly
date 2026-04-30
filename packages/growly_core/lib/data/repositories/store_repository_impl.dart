@@ -71,7 +71,7 @@ class StoreRepositoryImpl implements IStoreRepository {
   @override
   Future<(StoreItem?, Failure?)> purchaseItem(String childId, String itemId) async {
     try {
-      // Get item price
+      // Get item details for return value
       final itemData = await _client
           .from('store_items')
           .select()
@@ -82,8 +82,6 @@ class StoreRepositoryImpl implements IStoreRepository {
       if (itemMap == null) {
         return (null, DatabaseFailure(message: 'Item tidak ditemukan'));
       }
-
-      final price = itemMap['price_stars'] as int;
 
       // Check if already owned
       final existing = await _client
@@ -97,11 +95,10 @@ class StoreRepositoryImpl implements IStoreRepository {
         return (null, DatabaseFailure(message: 'Item sudah dimiliki'));
       }
 
-      // Deduct stars + record purchase atomically via RPC
+      // Deduct stars + record purchase atomically via RPC (price fetched inside RPC)
       final result = await _client.rpc('purchase_store_item', params: {
         'p_child_id': childId,
         'p_item_id': itemId,
-        'p_stars_cost': price,
       });
 
       final resultMap = result as Map<String, dynamic>?;
