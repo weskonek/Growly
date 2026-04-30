@@ -343,7 +343,7 @@ class _UpgradeBottomSheetState extends ConsumerState<_UpgradeBottomSheet> {
                 FilledButton(
                   onPressed: _selectedPayment == null
                       ? null
-                      : () => _processMidtransPayment(context),
+                      : () => _processMidtransPayment(),
                   child: const Text('Bayar Sekarang'),
                 ),
               ],
