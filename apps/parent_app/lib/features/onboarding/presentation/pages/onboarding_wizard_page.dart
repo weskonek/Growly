@@ -619,17 +619,6 @@ class _ScreenTimeOnboardingStepState extends ConsumerState<_ScreenTimeOnboarding
     if (picked == null) return;
     setState(() => isStart ? _bedtimeStart = picked : _bedtimeEnd = picked);
   }
-
-  Future<void> _markStepComplete(int step) async {
-    final userId = Supabase.instance.client.auth.currentUser?.id;
-    if (userId == null) return;
-    await Supabase.instance.client.from('onboarding_steps').upsert({
-      'parent_id': userId,
-      'step_number': step,
-      'completed': true,
-      'completed_at': DateTime.now().toIso8601String(),
-    }, onConflict: 'parent_id,step_number');
-  }
 }
 
 class _AppLockOnboardingStep extends ConsumerStatefulWidget {
