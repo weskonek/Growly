@@ -290,10 +290,11 @@ class _AiTutorPageState extends ConsumerState<AiTutorPage> {
           ),
         ],
       ),
+    ),
     );
   }
 
-  void _send() async {
+  Future<bool> _showExitDialog async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
     _controller.clear();
