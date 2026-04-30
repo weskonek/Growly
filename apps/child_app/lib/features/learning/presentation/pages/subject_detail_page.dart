@@ -30,9 +30,9 @@ class _SubjectDetailPageState extends ConsumerState<SubjectDetailPage> {
               'Materi'),
         ),
         body: subjectsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
-        data: (subjects) {
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Center(child: Text('Error: $e')),
+          data: (subjects) {
           final subject = subjects.firstWhere(
             (s) => s['id'] == widget.subjectId,
             orElse: () => {'emoji': '📚', 'title': 'Materi'},
@@ -104,7 +104,10 @@ class _SubjectDetailPageState extends ConsumerState<SubjectDetailPage> {
           );
         },
       ),
+    ),
     );
+  }
+}
 
 class _LessonCard extends StatelessWidget {
   final String emoji, title, subtitle, duration;
