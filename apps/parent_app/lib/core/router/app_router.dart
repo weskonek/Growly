@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/services/fcm_service.dart' show pendingDeepLinkProvider;
+
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
 import '../../features/auth/presentation/pages/forgot_password_page.dart';
@@ -26,7 +28,8 @@ import 'package:growly_core/growly_core.dart' show authStateChangesProvider;
 
 /// Router provider with auth redirect logic
 final appRouterProvider = Provider<GoRouter>((ref) {
-  // Use growly_core's AsyncNotifier version — has eager seed to prevent blank screen
+  // Watch pending deep link from FCM notification tap
+  final pendingDeepLink = ref.watch(pendingDeepLinkProvider);
   final authState = ref.watch(authStateChangesProvider);
 
   return GoRouter(
