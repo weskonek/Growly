@@ -229,7 +229,7 @@ class _ChildLauncherPageState extends ConsumerState<ChildLauncherPage>
         backgroundColor: Theme.of(context).colorScheme.primaryContainer,
         body: SafeArea(
           child: Padding(
-          padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(24),
           child: childAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => Center(child: Text('Error: $e')),
