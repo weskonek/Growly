@@ -32,7 +32,8 @@ CREATE POLICY "Service role can insert notification logs"
   WITH CHECK (true);
 
 -- 3. Allow parent app service to update fcm_token on parent_profiles
--- (RLS policy for authenticated parents updating their own token)
+ALTER TABLE parent_profiles ENABLE ROW LEVEL SECURITY;
+
 CREATE POLICY "Parents can update own fcm_token"
   ON parent_profiles FOR UPDATE
   USING (auth.uid() = id)
