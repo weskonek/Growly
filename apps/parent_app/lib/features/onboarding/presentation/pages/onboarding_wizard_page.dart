@@ -59,6 +59,9 @@ class _OnboardingWizardPageState extends ConsumerState<OnboardingWizardPage> {
     }
   }
 
+  String _formatTimeOfDay(TimeOfDay t) =>
+      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
   Future<void> _saveScreenTimeRules() async {
     final childId = await _getFirstChildId();
     if (childId == null) return;
@@ -67,8 +70,8 @@ class _OnboardingWizardPageState extends ConsumerState<OnboardingWizardPage> {
       'child_id': childId,
       'daily_limit_minutes': stState.dailyLimitHours * 60,
       'bedtime_enabled': stState.bedtimeEnabled,
-      'bedtime_start': stState.bedtimeStart,
-      'bedtime_end': stState.bedtimeEnd,
+      'bedtime_start': _formatTimeOfDay(stState.bedtimeStart),
+      'bedtime_end': _formatTimeOfDay(stState.bedtimeEnd),
       'updated_at': DateTime.now().toUtc().toIso8601String(),
     }, onConflict: 'child_id');
   }
@@ -117,7 +120,7 @@ class _OnboardingWizardPageState extends ConsumerState<OnboardingWizardPage> {
       'parent_id': userId,
       'step_number': step,
       'completed': true,
-      'completed_at': DateTime.now().toIso8601String(),
+      'completed_at': DateTime.now().toUtc().toIso8601String(),
     }, onConflict: 'parent_id,step_number');
   }
 
@@ -224,7 +227,7 @@ class _OnboardingWizardPageState extends ConsumerState<OnboardingWizardPage> {
             color: cs.primaryContainer,
             shape: BoxShape.circle,
           ),
-          child: Center(
+          child: const Center(
             child: Text('👋', style: TextStyle(fontSize: 64)),
           ),
         ),
@@ -576,7 +579,7 @@ class _AddChildOnboardingStepState extends ConsumerState<_AddChildOnboardingStep
       'parent_id': userId,
       'step_number': step,
       'completed': true,
-      'completed_at': DateTime.now().toIso8601String(),
+      'completed_at': DateTime.now().toUtc().toIso8601String(),
     }, onConflict: 'parent_id,step_number');
   }
 }
@@ -816,17 +819,6 @@ class _AppLockOnboardingStepState extends ConsumerState<_AppLockOnboardingStep> 
       ],
     );
   }
-
-  Future<void> _markStepComplete(int step) async {
-    final userId = Supabase.instance.client.auth.currentUser?.id;
-    if (userId == null) return;
-    await Supabase.instance.client.from('onboarding_steps').upsert({
-      'parent_id': userId,
-      'step_number': step,
-      'completed': true,
-      'completed_at': DateTime.now().toIso8601String(),
-    }, onConflict: 'parent_id,step_number');
-  }
 }
 
 class _SchoolModeOnboardingStep extends ConsumerStatefulWidget {
@@ -909,11 +901,11 @@ class _SchoolModeOnboardingStepState extends ConsumerState<_SchoolModeOnboarding
                   Wrap(
                     spacing: 8,
                     children: [
-                      FilterChip(label: const Text('Senin'), selected: _monEnabled, onSelected: (v) => setState(() => _monEnabled = v)),
-                      FilterChip(label: const Text('Selasa'), selected: _tueEnabled, onSelected: (v) => setState(() => _tueEnabled = v)),
-                      FilterChip(label: const Text('Rabu'), selected: _wedEnabled, onSelected: (v) => setState(() => _wedEnabled = v)),
-                      FilterChip(label: const Text('Kamis'), selected: _thuEnabled, onSelected: (v) => setState(() => _thuEnabled = v)),
-                      FilterChip(label: const Text('Jumat'), selected: _friEnabled, onSelected: (v) => setState(() => _friEnabled = v)),
+                      FilterChip(label: const Text('Senin'), selected: _monEnabled, onSelected: (v) { setState(() => _monEnabled = v); _syncToProvider(); }),
+                      FilterChip(label: const Text('Selasa'), selected: _tueEnabled, onSelected: (v) { setState(() => _tueEnabled = v); _syncToProvider(); }),
+                      FilterChip(label: const Text('Rabu'), selected: _wedEnabled, onSelected: (v) { setState(() => _wedEnabled = v); _syncToProvider(); }),
+                      FilterChip(label: const Text('Kamis'), selected: _thuEnabled, onSelected: (v) { setState(() => _thuEnabled = v); _syncToProvider(); }),
+                      FilterChip(label: const Text('Jumat'), selected: _friEnabled, onSelected: (v) { setState(() => _friEnabled = v); _syncToProvider(); }),
                     ],
                   ),
                 ],
@@ -932,7 +924,25 @@ class _SchoolModeOnboardingStepState extends ConsumerState<_SchoolModeOnboarding
     if (picked == null) return;
     setState(() {
       final time = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
-      if (isStart) _schoolStart = time; else _schoolEnd = time;
+      if (isStart) {
+        _schoolStart = time;
+      } else {
+        _schoolEnd = time;
+      }
     });
+    _syncToProvider();
+  }
+
+  void _syncToProvider() {
+    ref.read(_schoolStateProvider.notifier).state = _SchoolData(
+      enabled: _schoolModeEnabled,
+      start: _schoolStart,
+      end: _schoolEnd,
+      monEnabled: _monEnabled,
+      tueEnabled: _tueEnabled,
+      wedEnabled: _wedEnabled,
+      thuEnabled: _thuEnabled,
+      friEnabled: _friEnabled,
+    );
   }
 }
