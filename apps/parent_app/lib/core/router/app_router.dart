@@ -33,13 +33,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateChangesProvider);
 
   return GoRouter(
-    initialLocation: '/dashboard',
+    initialLocation: pendingDeepLink ?? '/dashboard',
     redirect: (context, state) {
       // Guard: while auth state is still loading, show splash
       if (authState.isLoading) return '/splash';
       final isLoggedIn = authState.valueOrNull!.session != null;
       final isAuthRoute = state.matchedLocation.startsWith('/auth');
       final isSplash = state.matchedLocation == '/splash';
+
+      // If app was opened from a FCM notification tap, navigate to that deep link
+      if (pendingDeepLink != null && isLoggedIn) {
+        final target = pendingDeepLink;
+        Future.microtask(() {
+          ref.read(pendingDeepLinkProvider.notifier).state = null;
+        });
+        return target;
+      }
 
       if (!isLoggedIn && !isAuthRoute) return '/auth/login';
       if (isLoggedIn && isAuthRoute) return '/dashboard';
