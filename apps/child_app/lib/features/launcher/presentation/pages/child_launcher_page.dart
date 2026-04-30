@@ -228,7 +228,7 @@ class _ChildLauncherPageState extends ConsumerState<ChildLauncherPage>
       child: Scaffold(
         backgroundColor: Theme.of(context).colorScheme.primaryContainer,
         body: SafeArea(
-        child: Padding(
+          child: Padding(
           padding: const EdgeInsets.all(24),
           child: childAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
