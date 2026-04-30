@@ -19,7 +19,7 @@ function verifyMidtransSignature(
   const raw = orderId + statusCode + grossAmount + expectedServerKey
   const expectedSig = createHmac('sha512', new TextEncoder().encode(expectedServerKey))
     .update(new TextEncoder().encode(raw))
-    .toString()
+    .digest('hex')
   return signatureKey === expectedSig
 }
 
