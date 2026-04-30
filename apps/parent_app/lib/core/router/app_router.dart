@@ -24,7 +24,7 @@ import '../../features/settings/presentation/pages/privacy_page.dart';
 import '../../features/notifications/presentation/pages/notifications_page.dart';
 import '../../features/onboarding/presentation/pages/onboarding_wizard_page.dart';
 import '../../features/family_rewards/presentation/pages/reward_box_page.dart';
-import 'package:growly_core/growly_core.dart' show authStateChangesProvider;
+import 'package:growly_core/growly_core.dart' show authStateChangesProvider, onboardingCompletedProvider;
 
 /// Router provider with auth redirect logic
 final appRouterProvider = Provider<GoRouter>((ref) {
