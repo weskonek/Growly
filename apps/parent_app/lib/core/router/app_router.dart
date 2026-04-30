@@ -46,7 +46,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateChangesProvider);
 
   return GoRouter(
-    initialLocation: pendingDeepLink ?? '/dashboard',
+    initialLocation: pendingDeepLink, // null = use '/' then redirect kicks in
     redirect: (context, state) {
       // Guard: while auth state is still loading, show splash
       if (authState.isLoading) return '/splash';
@@ -65,12 +65,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       if (!isLoggedIn && !isAuthRoute) return '/auth/login';
       if (isLoggedIn && isAuthRoute) return '/dashboard';
-      if (isLoggedIn && isSplash) {
-        // Check if onboarding is needed — redirect to onboarding if not completed
-        final onb = await ref.read(onboardingCompletedProvider.future);
-        if (!onb) return '/onboarding';
-        return '/dashboard';
-      }
+      if (isLoggedIn && isSplash) return '/dashboard';
       return null;
     },
     routes: [

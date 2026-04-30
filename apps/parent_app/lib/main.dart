@@ -7,7 +7,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/app.dart';
 import 'core/config/env.dart';
-import 'core/services/fcm_service.dart' show initFcm, fcmBackgroundHandler;
+import 'core/router/app_router.dart';
+import 'core/services/fcm_service.dart' show initFcm, fcmBackgroundHandler, pendingDeepLinkProvider;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,8 +24,6 @@ Future<void> main() async {
   try {
     await Firebase.initializeApp();
     await initFcm();
-
-    // Register background handler for FCM messages
     FirebaseMessaging.onBackgroundMessage(fcmBackgroundHandler);
   } catch (e) {
     debugPrint('[main] Firebase/FCM init skipped: $e');
