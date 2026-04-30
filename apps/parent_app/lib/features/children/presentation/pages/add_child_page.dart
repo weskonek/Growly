@@ -52,7 +52,7 @@ class _AddChildPageState extends ConsumerState<AddChildPage> {
     ref.listen(createChildProvider, (prev, next) {
       if (next.hasError && (prev == null || !prev.hasError)) {
         final msg = '${next.error}'.toLowerCase();
-        if (msg.contains('limit') || msg.contains('batas') || msg.contains('child_limit')) {
+        if (msg.contains('limit') || msg.contains('batas') || msg.contains('child_limit') || msg.contains('p0001')) {
           ref.invalidate(canAddChildProvider);
           return;
         }
