@@ -251,6 +251,7 @@ class _ChildLauncherPageState extends ConsumerState<ChildLauncherPage>
           ),
         ),
       ),
+    ),
     );
   }
 
