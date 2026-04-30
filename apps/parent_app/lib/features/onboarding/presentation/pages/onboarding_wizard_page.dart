@@ -703,10 +703,29 @@ class _ScreenTimeOnboardingStepState extends ConsumerState<_ScreenTimeOnboarding
     );
   }
 
+  void _syncToProvider() {
+    ref.read(_screenTimeStateProvider.notifier).state = _ScreenTimeData(
+      dailyLimitHours: _dailyLimitHours,
+      bedtimeEnabled: _bedtimeEnabled,
+      bedtimeStart: _bedtimeStart,
+      bedtimeEnd: _bedtimeEnd,
+    );
+  }
+
   Future<void> _pickTime(BuildContext context, bool isStart) async {
-    final picked = await showTimePicker(context: context, initialTime: isStart ? _bedtimeStart : _bedtimeEnd);
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: isStart ? _bedtimeStart : _bedtimeEnd,
+    );
     if (picked == null) return;
-    setState(() => isStart ? _bedtimeStart = picked : _bedtimeEnd = picked);
+    setState(() {
+      if (isStart) {
+        _bedtimeStart = picked;
+      } else {
+        _bedtimeEnd = picked;
+      }
+    });
+    _syncToProvider();
   }
 }
 
