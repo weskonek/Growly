@@ -7,8 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/app.dart';
 import 'core/config/env.dart';
-import 'core/router/app_router.dart';
-import 'core/services/fcm_service.dart' show initFcm, fcmBackgroundHandler, pendingDeepLinkProvider;
+import 'core/services/fcm_service.dart' show initFcm, fcmBackgroundHandler;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
