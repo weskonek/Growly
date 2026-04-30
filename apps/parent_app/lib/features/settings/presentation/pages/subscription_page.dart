@@ -124,13 +124,63 @@ class _UpgradeBottomSheetState extends ConsumerState<_UpgradeBottomSheet> {
   bool _isProcessing = false;
   String? _selectedPayment;
 
-  Future<void> _processMidtransPayment(BuildContext ctx) async {
+  Future<void> _processMidtransPayment() async {
     if (_selectedPayment == null) return;
-    // TODO: wire WebView for Snap payment when Midtrans keys are configured
-    ScaffoldMessenger.of(ctx).showSnackBar(
-      SnackBar(content: Text('Payment gateway: $_selectedPayment selected — wire WebView here')),
-    );
-    Navigator.pop(ctx);
+    setState(() => _isProcessing = true);
+
+    try {
+      final parentId = ref.read(currentUserIdProvider);
+      if (parentId == null) throw Exception('Not authenticated');
+
+      final order = await createMidtransOrder(
+        parentId: parentId,
+        tier: 'premium_family',
+        paymentMethod: _selectedPayment!,
+      );
+
+      if (!mounted) return;
+
+      final result = await Navigator.of(context).push<PaymentResult>(
+        MaterialPageRoute(
+          builder: (_) => SnapWebViewPage(
+            url: order.redirectUrl,
+            orderId: order.orderId,
+          ),
+        ),
+      );
+
+      if (!mounted) return;
+
+      if (result == PaymentResult.success) {
+        final upgradeSuccess =
+            await ref.read(upgradeSubscriptionProvider.notifier).upgrade('premium_family');
+        if (upgradeSuccess && mounted) {
+          Navigator.pop(context);
+        }
+      } else if (result == PaymentResult.pending) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Pembayaran sedang diproses. Upgrade akan aktif setelah pembayaran diterima.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        Navigator.pop(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Pembayaran dibatalkan.'),
+            backgroundColor: Colors.grey,
+          ),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isProcessing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal: $e'), backgroundColor: Colors.red),
+      );
+    }
   }
 
   Future<void> _processUpgrade() async {
@@ -194,10 +244,10 @@ class _UpgradeBottomSheetState extends ConsumerState<_UpgradeBottomSheet> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 28),
-              _PlanFeatureItem(emoji: '👶', title: 'Anak Tanpa Batas', desc: 'Tambahkan profil anak tanpa batas.'),
-              _PlanFeatureItem(emoji: '🤖', title: 'AI Tutor Tanpa Batas', desc: 'Belajar dengan bantuan AI tanpa batasan.'),
-              _PlanFeatureItem(emoji: '📊', title: 'Laporan Lengkap', desc: 'Lacak progress belajar anak setiap hari.'),
-              _PlanFeatureItem(emoji: '🛡️', title: 'Kontrol Orang Tua Lengkap', desc: 'Mode sekolah, kunci aplikasi, & perangkat.'),
+              const _PlanFeatureItem(emoji: '👶', title: 'Anak Tanpa Batas', desc: 'Tambahkan profil anak tanpa batas.'),
+              const _PlanFeatureItem(emoji: '🤖', title: 'AI Tutor Tanpa Batas', desc: 'Belajar dengan bantuan AI tanpa batasan.'),
+              const _PlanFeatureItem(emoji: '📊', title: 'Laporan Lengkap', desc: 'Lacak progress belajar anak setiap hari.'),
+              const _PlanFeatureItem(emoji: '🛡️', title: 'Kontrol Orang Tua Lengkap', desc: 'Mode sekolah, kunci aplikasi, & perangkat.'),
               const SizedBox(height: 24),
               Card(
                 color: cs.primaryContainer,
@@ -311,7 +361,6 @@ class _PaymentOption extends StatelessWidget {
   final String label;
   final String sublabel;
   final bool selected;
-  final bool enabled;
   final VoidCallback onTap;
 
   const _PaymentOption({
@@ -319,7 +368,6 @@ class _PaymentOption extends StatelessWidget {
     required this.label,
     required this.sublabel,
     required this.selected,
-    this.enabled = true,
     required this.onTap,
   });
 
@@ -327,35 +375,29 @@ class _PaymentOption extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return GestureDetector(
-      onTap: enabled ? onTap : null,
+      onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: selected ? cs.primaryContainer : (enabled ? cs.surface : Colors.grey.shade100),
+          color: selected ? cs.primaryContainer : cs.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: selected ? cs.primary : Colors.transparent, width: 2),
         ),
         child: Row(
           children: [
-            Icon(icon, color: enabled ? null : Colors.grey),
+            Icon(icon),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: TextStyle(fontWeight: FontWeight.w700, color: enabled ? null : Colors.grey)),
-                  Text(sublabel, style: TextStyle(fontSize: 12, color: enabled ? cs.onSurfaceVariant : Colors.grey)),
+                  Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+                  Text(sublabel, style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
                 ],
               ),
             ),
-            if (!enabled)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(8)),
-                child: const Text('Segera Hadir', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700)),
-              ),
-            if (selected && enabled)
+            if (selected)
               Icon(Icons.check_circle, color: cs.primary),
           ],
         ),
