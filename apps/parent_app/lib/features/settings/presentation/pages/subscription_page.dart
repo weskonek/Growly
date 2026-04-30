@@ -109,7 +109,7 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
 // 2. Remove this dev-mode bottom sheet
 // 3. Set kIsDevelopment = false
 // ──────────────────────────────────────────────────────────────────
-const kIsDevelopment = true;
+const kIsDevelopment = false;
 
 class _UpgradeBottomSheet extends ConsumerStatefulWidget {
   final SubscriptionTier currentTier;

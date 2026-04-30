@@ -97,7 +97,15 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders })
   }
 
-  const serverKey = Deno.env.get('FCM_SERVER_KEY')
+  // Auth guard — only allow calls from trusted internal services
+  const authHeader = req.headers.get('Authorization');
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!authHeader || authHeader !== `Bearer ${serviceKey}`) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+  }
+
+  const serverKey = Deno.env.get('FCM_SERVER_KEY');
   if (!serverKey) {
     return new Response(
       JSON.stringify({ error: 'FCM_SERVER_KEY not configured' }),
