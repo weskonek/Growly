@@ -3,9 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:growly_core/growly_core.dart';
+import 'package:child_app/core/router/child_router.dart' show verifiedChildIdProvider;
 
 final _childProvider = FutureProvider<ChildProfile?>((ref) async {
-  final childId = ref.watch(_verifiedChildIdProvider);
+  final childId = ref.watch(verifiedChildIdProvider);
   if (childId == null) return null;
   final client = Supabase.instance.client;
   final resp = await client
@@ -17,8 +18,6 @@ final _childProvider = FutureProvider<ChildProfile?>((ref) async {
   if (resp == null) return null;
   return ChildProfile.fromJson(Map<String, dynamic>.from(resp));
 });
-
-final _verifiedChildIdProvider = StateProvider<String?>((ref) => null);
 
 final _rewardProvider = FutureProvider<RewardSystem>((ref) async {
   final child = await ref.watch(_childProvider.future);

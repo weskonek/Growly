@@ -3,9 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:growly_core/growly_core.dart';
+import 'package:child_app/core/router/child_router.dart' show verifiedChildIdProvider;
 
 final _profileChildProvider = FutureProvider<ChildProfile?>((ref) async {
-  final childId = ref.watch(_childIdProvider);
+  final childId = ref.watch(verifiedChildIdProvider);
   if (childId == null) return null;
   final client = Supabase.instance.client;
   final resp = await client
@@ -17,8 +18,6 @@ final _profileChildProvider = FutureProvider<ChildProfile?>((ref) async {
   if (resp == null) return null;
   return ChildProfile.fromJson(Map<String, dynamic>.from(resp));
 });
-
-final _childIdProvider = StateProvider<String?>((ref) => null);
 
 final _profileRewardProvider = FutureProvider<RewardSystem>((ref) async {
   final child = await ref.watch(_profileChildProvider.future);
@@ -88,7 +87,7 @@ class ChildProfilePage extends ConsumerWidget {
               IconButton(
                 icon: const Icon(Icons.edit),
                 tooltip: 'Edit Profil',
-                onPressed: () => _showEditAvatarSheet(context, ref, child),
+                onPressed: () => _showEditProfileSheet(context, ref, child),
               ),
             ],
           ),
@@ -303,26 +302,42 @@ class ChildProfilePage extends ConsumerWidget {
     '🦊', '🐨', '🐯', '🦄', '🐧', '🐲', '🦋', '🐝', '🌟', '🚀',
   ];
 
-  void _showEditAvatarSheet(BuildContext context, WidgetRef ref, ChildProfile child) {
-    String selected = child.avatarUrl ?? _avatarOptions[0];
+  void _showEditProfileSheet(BuildContext context, WidgetRef ref, ChildProfile child) {
+    String selectedAvatar = child.avatarUrl ?? _avatarOptions[0];
+    final nameController = TextEditingController(text: child.name);
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheetState) => Padding(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+          padding: EdgeInsets.fromLTRB(24, 24, 24, 32).copyWith(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 32,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Pilih Avatar', style: Theme.of(ctx).textTheme.titleLarge),
+              Text('Edit Profil', style: Theme.of(ctx).textTheme.titleLarge),
               const SizedBox(height: 20),
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Nama',
+                  border: OutlineInputBorder(),
+                ),
+                textCapitalization: TextCapitalization.words,
+              ),
+              const SizedBox(height: 20),
+              Text('Avatar', style: Theme.of(ctx).textTheme.titleSmall),
+              const SizedBox(height: 12),
               Wrap(
                 spacing: 10,
                 runSpacing: 10,
                 children: _avatarOptions.map((emoji) {
-                  final isSelected = emoji == selected;
+                  final isSelected = emoji == selectedAvatar;
                   return GestureDetector(
-                    onTap: () => setSheetState(() => selected = emoji),
+                    onTap: () => setSheetState(() => selectedAvatar = emoji),
                     child: Container(
                       width: 56,
                       height: 56,
@@ -349,7 +364,7 @@ class ChildProfilePage extends ConsumerWidget {
               FilledButton(
                 onPressed: () async {
                   Navigator.pop(ctx);
-                  await _updateAvatar(ref, child.id, selected);
+                  await _updateProfile(ref, child.id, nameController.text.trim(), selectedAvatar);
                 },
                 child: const Text('Simpan'),
               ),
@@ -360,11 +375,11 @@ class ChildProfilePage extends ConsumerWidget {
     );
   }
 
-  Future<void> _updateAvatar(WidgetRef ref, String childId, String emoji) async {
+  Future<void> _updateProfile(WidgetRef ref, String childId, String name, String avatar) async {
     try {
       await Supabase.instance.client
           .from('child_profiles')
-          .update({'avatar_url': emoji})
+          .update({'name': name, 'avatar_url': avatar})
           .eq('id', childId);
       ref.invalidate(_profileChildProvider);
     } catch (_) {}
