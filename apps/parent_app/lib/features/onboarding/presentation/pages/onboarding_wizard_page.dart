@@ -674,7 +674,10 @@ class _ScreenTimeOnboardingStepState extends ConsumerState<_ScreenTimeOnboarding
                 ? '${_bedtimeStart.format(context)} - ${_bedtimeEnd.format(context)}'
                 : 'Tidak aktif'),
             value: _bedtimeEnabled,
-            onChanged: (v) => setState(() => _bedtimeEnabled = v),
+            onChanged: (v) {
+              setState(() => _bedtimeEnabled = v);
+              _syncToProvider();
+            },
           ),
         ),
         if (_bedtimeEnabled) ...[
