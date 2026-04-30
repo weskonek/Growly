@@ -868,7 +868,10 @@ class _SchoolModeOnboardingStepState extends ConsumerState<_SchoolModeOnboarding
             title: const Text('Aktifkan Mode Sekolah'),
             subtitle: const Text('Semua aplikasi non-belajar diblokir saat jam sekolah'),
             value: _schoolModeEnabled,
-            onChanged: (v) => setState(() => _schoolModeEnabled = v),
+            onChanged: (v) {
+              setState(() => _schoolModeEnabled = v);
+              _syncToProvider();
+            },
           ),
         ),
         if (_schoolModeEnabled) ...[
