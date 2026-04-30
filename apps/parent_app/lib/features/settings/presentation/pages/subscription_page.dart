@@ -1,6 +1,8 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:growly_core/growly_core.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/providers/subscription_provider.dart';
 
 class SubscriptionPage extends ConsumerStatefulWidget {
@@ -120,19 +122,15 @@ class _UpgradeBottomSheet extends ConsumerStatefulWidget {
 
 class _UpgradeBottomSheetState extends ConsumerState<_UpgradeBottomSheet> {
   bool _isProcessing = false;
+  String? _selectedPayment;
 
-  Future<void> _processUpgrade() async {
-    if (!kIsDevelopment) return; // Safety: do nothing in production
-    setState(() => _isProcessing = true);
-
-    final success = await ref.read(upgradeSubscriptionProvider.notifier).upgrade('premium_family');
-
-    if (!mounted) return;
-    setState(() => _isProcessing = false);
-
-    if (success) {
-      Navigator.pop(context);
-    }
+  Future<void> _processMidtransPayment(BuildContext ctx) async {
+    if (_selectedPayment == null) return;
+    // TODO: wire WebView for Snap payment when Midtrans keys are configured
+    ScaffoldMessenger.of(ctx).showSnackBar(
+      SnackBar(content: Text('Payment gateway: $_selectedPayment selected — wire WebView here')),
+    );
+    Navigator.pop(ctx);
   }
 
   @override
@@ -257,35 +255,37 @@ class _UpgradeBottomSheetState extends ConsumerState<_UpgradeBottomSheet> {
                   child: const Text('Nanti dulu'),
                 ),
               ] else ...[
-                // ── PRODUCTION: real payment flow (Midtrans) ────────────────
-                Text('Pilih Metode Pembayaran', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                // ── PRODUCTION: real Midtrans payment flow ────────────────
+                Text('Pilih Metode Pembayaran',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 12),
                 _PaymentOption(
                   icon: Icons.account_balance,
                   label: 'Transfer Bank',
                   sublabel: 'BCA, Mandiri, BNI, BRI',
-                  selected: false,
-                  onTap: () {},
+                  selected: _selectedPayment == 'bank_transfer',
+                  onTap: () => setState(() => _selectedPayment = 'bank_transfer'),
                 ),
                 _PaymentOption(
                   icon: Icons.qr_code,
                   label: 'QRIS',
                   sublabel: 'Semua e-wallet & mobile banking',
-                  selected: false,
-                  onTap: () {},
+                  selected: _selectedPayment == 'qris',
+                  onTap: () => setState(() => _selectedPayment = 'qris'),
                 ),
                 _PaymentOption(
-                  icon: Icons.credit_card,
-                  label: 'Kartu Kredit',
-                  sublabel: 'Segera Hadir',
-                  selected: false,
-                  enabled: false,
-                  onTap: () {},
+                  icon: Icons.phone_android,
+                  label: 'E-Wallet',
+                  sublabel: 'GoPay, OVO, DANA',
+                  selected: _selectedPayment == 'ewallet',
+                  onTap: () => setState(() => _selectedPayment = 'ewallet'),
                 ),
                 const SizedBox(height: 24),
                 FilledButton(
-                  onPressed: null, // disabled until payment gateway wired
-                  child: const Text('Segera Hadir'),
+                  onPressed: _selectedPayment == null
+                      ? null
+                      : () => _processMidtransPayment(context),
+                  child: const Text('Bayar Sekarang'),
                 ),
               ],
               const SizedBox(height: 16),
