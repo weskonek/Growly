@@ -24,6 +24,7 @@ class _ChildLauncherPageState extends ConsumerState<ChildLauncherPage>
   RealtimeConnectionStatus _connectionStatus = RealtimeConnectionStatus.connecting;
   RealtimeChannel? _syncChannel;
   bool _showAccessibilityBlock = false;
+  bool _willExit = false;
   Timer? _accessibilityCheckTimer;
 
   @override
@@ -202,9 +203,31 @@ class _ChildLauncherPageState extends ConsumerState<ChildLauncherPage>
 
     final childAsync = ref.watch(currentChildProvider);
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-      body: SafeArea(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        if (_willExit) {
+          _willExit = false;
+          final confirmed = await _showExitDialog(context);
+          if (confirmed && context.mounted) {
+            SystemNavigator.pop();
+          }
+        } else {
+          _willExit = true;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Tekan lagi untuk keluar'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+          await Future.delayed(const Duration(seconds: 2));
+          if (mounted) _willExit = false;
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+        body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: childAsync.when(
@@ -229,6 +252,27 @@ class _ChildLauncherPageState extends ConsumerState<ChildLauncherPage>
         ),
       ),
     );
+  }
+
+  Future<bool> _showExitDialog(BuildContext context) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Keluar dari Growly?'),
+            content: const Text('Tekan keluar untuk menutup aplikasi.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Batal'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Keluar'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
   }
 }
 

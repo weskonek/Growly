@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:growly_core/growly_core.dart';
 import 'package:child_app/features/ai_tutor/providers/ai_tutor_providers.dart';
 import '../../../../features/launcher/providers/launcher_providers.dart' as launcher;
@@ -294,25 +295,43 @@ class _AiTutorPageState extends ConsumerState<AiTutorPage> {
     );
   }
 
-  Future<bool> _showExitDialog async {
+  void _send() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
     _controller.clear();
     _scrollToBottom();
 
-    // Determine mode based on child age group
     final child = ref.read(launcher.currentChildProvider).valueOrNull;
     final isYoungChild = child != null &&
         (child.ageGroup == AgeGroup.earlyChildhood || child.ageGroup == AgeGroup.primary);
     final mode = isYoungChild ? 'story' : 'general';
-
-    // Prepend theme for young children
     final messageText = isYoungChild && _selectedTheme.isNotEmpty
         ? '${_selectedTheme.replaceAll(RegExp(r'[^\w\s]'), '')}: $text'
         : text;
 
     await ref.read(aiTutorProvider.notifier).sendMessage(messageText, mode: mode);
     _scrollToBottom();
+  }
+
+  Future<bool> _showExitDialog(BuildContext context) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Keluar dari AI Tutor?'),
+            content: const Text('Percakapan ini tidak akan tersimpan.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Batal'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Keluar'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
   }
 }
 
