@@ -9,7 +9,6 @@ class RewardBoxPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final boxesAsync = ref.watch(rewardBoxesProvider);
-    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
