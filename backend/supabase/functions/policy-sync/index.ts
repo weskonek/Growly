@@ -1,14 +1,24 @@
-import { serve } from 'https://deno.land/x/sift@0.4.2/mod.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders })
+  }
+
   const { childId } = await req.json();
 
   if (!childId) {
-    return Response.json({ error: 'childId required' }, { status: 400 });
+    return new Response(JSON.stringify({ error: 'childId required' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   }
 
   const supabase = createClient(supabaseUrl, serviceKey);
@@ -32,10 +42,13 @@ serve(async (req) => {
       .single(),
   ]);
 
-  return Response.json({
-    restrictions: restrictions.data ?? [],
-    schedules: schedules.data ?? [],
-    settings: profile.data?.settings ?? {},
-    syncedAt: new Date().toISOString(),
-  });
+  return new Response(
+    JSON.stringify({
+      restrictions: restrictions.data ?? [],
+      schedules: schedules.data ?? [],
+      settings: profile.data?.settings ?? {},
+      syncedAt: new Date().toISOString(),
+    }),
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  )
 });
