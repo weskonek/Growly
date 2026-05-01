@@ -3,6 +3,7 @@
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
+.packages.txt
 .pub-cache/
 .pub/
 build/
@@ -17,6 +18,8 @@ build/
 # Environment
 .env
 .env.local
+.env.staging
+.env.production
 .env.*.local
 **/secrets.dart
 **/supabase_keys.dart
@@ -29,13 +32,29 @@ build/
 **/android/local.properties
 **/android/app/google-services.json
 **/android/key.properties
+**/.gradle/
+**/android/app/build/
+**/android/.gradle/
 
 # iOS
 **/ios/Runner/GoogleService-Info.plist
 **/ios/Flutter/flutter_export_environment.sh
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/build/
 
 # Supabase
 supabase/.temp/
+backend/supabase/.env
+backend/supabase/.temp/
 
 # Logs
 *.log
+
+# Coverage
+coverage/
+
+# Editor temp
+*.bak
+*.tmp
+*.temp
