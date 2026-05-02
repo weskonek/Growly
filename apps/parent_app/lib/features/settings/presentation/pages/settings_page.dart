@@ -203,6 +203,53 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     }
   }
 
+  Future<void> _showDeleteAccountDialog(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hapus Akun?'),
+        content: const Text(
+          'Semua data anak, langganan, dan aktivitas akan dihapus permanen. '
+          'Tindakan ini tidak bisa dibatalkan.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Hapus Akun'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await _deleteAccount();
+    }
+  }
+
+  Future<void> _deleteAccount() async {
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) return;
+
+      await Supabase.instance.client.rpc('delete_parent_account', params: {'p_parent_id': userId});
+      await Supabase.instance.client.auth.signOut();
+
+      if (mounted) {
+        context.go('/auth/login');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal menghapus akun: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   Future<void> _signOut(BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
