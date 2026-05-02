@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:child_app/features/launcher/providers/launcher_providers.dart';
 import 'package:child_app/core/router/child_router.dart';
 import 'package:child_app/core/services/services_providers.dart';
+import 'package:child_app/core/services/notification_alert_service.dart' show AlertEvent;
 
 const _channel = MethodChannel('com.growly/android_parental_control');
 
@@ -245,6 +246,7 @@ class _ChildLauncherPageState extends ConsumerState<ChildLauncherPage>
               return _LauncherContent(
                 child: child,
                 childId: child.id,
+                parentId: child.parentId,
                 connectionStatus: _connectionStatus,
               );
             },
@@ -780,11 +782,13 @@ class _PinGateState extends ConsumerState<_PinGate> {
 class _LauncherContent extends ConsumerWidget {
   final ChildProfile child;
   final String childId;
+  final String parentId;
   final RealtimeConnectionStatus connectionStatus;
 
   const _LauncherContent({
     required this.child,
     required this.childId,
+    required this.parentId,
     required this.connectionStatus,
   });
 
@@ -793,6 +797,19 @@ class _LauncherContent extends ConsumerWidget {
     final cs = Theme.of(context).colorScheme;
     final remainingAsync = ref.watch(screenTimeRemainingProvider(childId));
     final scheduleAsync = ref.watch(activeScheduleProvider(childId));
+    final alertSvc = ref.watch(notificationAlertServiceProvider);
+
+    ref.listen(screenTimeRemainingProvider(childId), (prev, next) {
+      final prevVal = prev?.valueOrNull;
+      final nextVal = next.valueOrNull;
+      if (prevVal != null && prevVal > 0 && nextVal != null && nextVal <= 0) {
+        alertSvc.sendAlert(
+          childId: childId,
+          parentId: parentId,
+          event: AlertEvent.screenTimeExhausted,
+        );
+      }
+    });
 
     final remaining = remainingAsync.valueOrNull ?? 0;
     final schedule = scheduleAsync.valueOrNull;

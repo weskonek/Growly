@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:growly_core/growly_core.dart';
+import 'package:growly_core/growly_core.dart' show completeOnboarding;
 import 'package:parent_app/features/children/providers/child_providers.dart';
 
 // ── Shared state providers so wizard parent can read sub-step data ──────────
@@ -126,14 +126,7 @@ class _OnboardingWizardPageState extends ConsumerState<OnboardingWizardPage> {
 
   Future<void> _finishOnboarding() async {
     setState(() => _loading = true);
-    final userId = Supabase.instance.client.auth.currentUser?.id;
-    if (userId != null) {
-      await Supabase.instance.client
-          .from('parent_profiles')
-          .update({'onboarding_completed': true})
-          .eq('id', userId);
-    }
-    ref.invalidate(onboardingCompletedProvider);
+    await completeOnboarding(ref);
     if (mounted) context.go('/dashboard');
   }
 

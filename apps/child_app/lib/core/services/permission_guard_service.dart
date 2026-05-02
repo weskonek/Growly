@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'notification_alert_service.dart';
 
 /// Guards that required Android permissions (UsageStats, Accessibility) are active.
 /// Shows a blocking fullscreen dialog if Accessibility is disabled.
@@ -11,17 +11,16 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class PermissionGuardService {
   static const _channel = MethodChannel('com.growly/android_parental_control');
 
-  final SupabaseClient _supabase;
   String? _childId;
   String? _parentId;
   Timer? _checkTimer;
-
-  PermissionGuardService() : _supabase = Supabase.instance.client;
+  NotificationAlertService? _alertService;
 
   /// Call after child is verified. Starts periodic permission checks.
   void startGuarding(String childId, String parentId) {
     _childId = childId;
     _parentId = parentId;
+    _alertService = NotificationAlertService();
     // Check every 30 seconds while app is open
     _checkTimer?.cancel();
     _checkTimer = Timer.periodic(
@@ -35,6 +34,7 @@ class PermissionGuardService {
     _checkTimer = null;
     _childId = null;
     _parentId = null;
+    _alertService = null;
   }
 
   /// Returns true if Android Accessibility Service is currently enabled.
@@ -57,29 +57,36 @@ class PermissionGuardService {
     }
   }
 
-  /// Check and send alert to parent if Accessibility was disabled.
   Future<void> _checkAndNotifyIfDisabled() async {
     if (_childId == null || _parentId == null) return;
-    final enabled = await checkAccessibilityEnabled();
-    if (!enabled) {
-      await _notifyParent();
+
+    final hasAccessibility = await checkAccessibilityEnabled();
+    if (!hasAccessibility) {
+      await _notifyParentAccessibility();
+    }
+
+    final hasUsageStats = await checkUsageStatsEnabled();
+    if (!hasUsageStats) {
+      await _notifyParentUsageStats();
     }
   }
 
-  Future<void> _notifyParent() async {
+  Future<void> _notifyParentAccessibility() async {
     if (_childId == null || _parentId == null) return;
-    try {
-      await _supabase.from('notifications').insert({
-        'parent_id': _parentId,
-        'child_id': _childId,
-        'title': '⚠️ Proteksi Dimatikan',
-        'body': 'Izin aksesibilitas Growly di perangkat ini telah dinonaktifkan.',
-        'type': 'alert',
-        'is_read': false,
-      });
-    } catch (_) {
-      // Silent — don't crash over notification failure
-    }
+    await _alertService?.sendAlert(
+      childId: _childId!,
+      parentId: _parentId!,
+      event: AlertEvent.accessibilityRevoked,
+    );
+  }
+
+  Future<void> _notifyParentUsageStats() async {
+    if (_childId == null || _parentId == null) return;
+    await _alertService?.sendAlert(
+      childId: _childId!,
+      parentId: _parentId!,
+      event: AlertEvent.usageStatsRevoked,
+    );
   }
 
   /// Opens Android Accessibility settings so the user can re-enable it.

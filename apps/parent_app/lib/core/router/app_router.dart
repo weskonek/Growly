@@ -53,6 +53,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isLoggedIn = authState.valueOrNull!.session != null;
       final isAuthRoute = state.matchedLocation.startsWith('/auth');
       final isSplash = state.matchedLocation == '/splash';
+      final isOnboarding = state.matchedLocation == '/onboarding';
 
       // If app was opened from a FCM notification tap, navigate to that deep link
       if (pendingDeepLink != null && isLoggedIn) {
@@ -65,7 +66,25 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       if (!isLoggedIn && !isAuthRoute) return '/auth/login';
       if (isLoggedIn && isAuthRoute) return '/dashboard';
-      if (isLoggedIn && isSplash) return '/dashboard';
+
+      // First navigation after login — check onboarding
+      if (isLoggedIn && isSplash) {
+        final onb = ref.read(onboardingCompletedProvider).valueOrNull ?? true;
+        return onb ? '/dashboard' : '/onboarding';
+      }
+
+      // Prevent accessing dashboard/settings if onboarding not completed
+      if (isLoggedIn && !isOnboarding) {
+        final onb = ref.read(onboardingCompletedProvider).valueOrNull ?? true;
+        if (!onb) return '/onboarding';
+      }
+
+      // Prevent re-entering onboarding if already completed
+      if (isLoggedIn && isOnboarding) {
+        final onb = ref.read(onboardingCompletedProvider).valueOrNull ?? true;
+        if (onb) return '/dashboard';
+      }
+
       return null;
     },
     routes: [
