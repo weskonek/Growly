@@ -901,7 +901,7 @@ class _LauncherContent extends ConsumerWidget {
                         : const Color(0xFFE74C3C),
                 onTap: isBlocked || remaining <= 0
                     ? null
-                    : () => context.go('/home'),
+                    : () => context.go('/learning'),
                 disabledReason: isBlocked
                     ? 'Mode ${schedule.mode == 'school' ? 'Sekolah' : 'Tidur'} aktif'
                     : remaining <= 0

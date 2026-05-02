@@ -167,6 +167,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
               const Divider(),
 
+              // Delete account
+              ListTile(
+                leading: const Icon(Icons.delete_forever, color: Colors.red),
+                title: const Text('Hapus Akun', style: TextStyle(color: Colors.red)),
+                subtitle: const Text('Semua data akan dihapus permanen'),
+                onTap: () => _showDeleteAccountDialog(context),
+              ),
+
+              const SizedBox(height: 8),
+
               // Sign out
               ListTile(
                 leading: const Icon(Icons.logout, color: Colors.red),

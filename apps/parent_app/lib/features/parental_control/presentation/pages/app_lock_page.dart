@@ -145,106 +145,186 @@ class _AppLockPageState extends ConsumerState<AppLockPage> {
   void _showAddAppSheet(BuildContext context) {
     _appNameController.clear();
     _appPackageController.clear();
+    String _selectedCategory = 'all';
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-          left: 24,
-          right: 24,
-          top: 24,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('Tambah Aplikasi', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 16),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => DraggableScrollableSheet(
+          initialChildSize: 0.85,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (_, scrollController) => SingleChildScrollView(
+            controller: scrollController,
+            child: Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+                left: 24,
+                right: 24,
+                top: 24,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Handle
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text('Tambah Aplikasi', style: Theme.of(ctx).textTheme.titleLarge),
+                  const SizedBox(height: 16),
 
-            // ── Preset popular apps ──────────────────────────────────
-            const Text('Aplikasi Populer', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _popularApps.map((app) {
-                return ActionChip(
-                  avatar: Text(app['emoji']!),
-                  label: Text(app['name']!, style: const TextStyle(fontSize: 12)),
-                  onPressed: () {
-                    _appNameController.text = app['name']!;
-                    _appPackageController.text = app['package']!;
-                  },
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 20),
+                  // Category filter chips
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: _categories.map((cat) {
+                        final selected = _selectedCategory == cat['key'];
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: FilterChip(
+                            label: Text(cat['label']!),
+                            selected: selected,
+                            onSelected: (_) => setSheetState(() => _selectedCategory = cat['key']!),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
 
-            // App name first — primary field
-            TextField(
-              controller: _appNameController,
-              autofocus: true,
-              textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: 'Nama Aplikasi',
-                hintText: 'contoh: Mobile Legends',
+                  // Filtered preset grid
+                  Text('Pilih aplikasi:', style: Theme.of(ctx).textTheme.titleSmall),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _getFilteredApps(_selectedCategory).map((app) {
+                      return ActionChip(
+                        avatar: Text(app['emoji']!),
+                        label: Text(app['name']!, style: const TextStyle(fontSize: 12)),
+                        backgroundColor: Theme.of(ctx).colorScheme.surfaceContainerHighest,
+                        onPressed: () {
+                          _appNameController.text = app['name']!;
+                          _appPackageController.text = app['package']!;
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // App name
+                  TextField(
+                    controller: _appNameController,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: const InputDecoration(
+                      labelText: 'Nama Aplikasi',
+                      border: OutlineInputBorder(),
+                      hintText: 'Ketik manual jika tidak ada di atas',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _appPackageController,
+                    decoration: const InputDecoration(
+                      labelText: 'Package Name',
+                      border: OutlineInputBorder(),
+                      hintText: 'com.example.app',
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  FilledButton(
+                    onPressed: () async {
+                      final appName = _appNameController.text.trim();
+                      if (appName.isEmpty) {
+                        ScaffoldMessenger.of(ctx).showSnackBar(
+                          const SnackBar(content: Text('Nama aplikasi wajib diisi')),
+                        );
+                        return;
+                      }
+                      var appPackage = _appPackageController.text.trim();
+                      if (appPackage.isEmpty) {
+                        appPackage = 'com.growly.locked.${appName.toLowerCase().replaceAll(' ', '_').replaceAll(RegExp(r'[^a-z0-9_]'), '')}';
+                      }
+                      Navigator.pop(ctx);
+                      await _addRestriction(appName, appPackage);
+                    },
+                    child: const Text('Tambah'),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
-            // Package name second — pre-filled when preset selected
-            TextField(
-              controller: _appPackageController,
-              decoration: const InputDecoration(
-                labelText: 'Package Name',
-                hintText: 'Pilih preset di atas atau ketik manual',
-              ),
-            ),
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: () async {
-                final appName = _appNameController.text.trim();
-                if (appName.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Nama aplikasi wajib diisi')),
-                  );
-                  return;
-                }
-                var appPackage = _appPackageController.text.trim();
-                if (appPackage.isEmpty) {
-                  // Generate pseudo-package from name
-                  appPackage =
-                      'com.growly.locked.${appName.toLowerCase().replaceAll(' ', '_').replaceAll(RegExp(r'[^a-z0-9_]'), '')}';
-                }
-                Navigator.pop(context);
-                await _addRestriction(appName, appPackage);
-              },
-              child: const Text('Tambah'),
-            ),
-            const SizedBox(height: 24),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  // Popular apps preset list — common apps Indonesian kids use
+  // Categories for filtering
+  static const _categories = [
+    {'key': 'all',     'label': 'Semua'},
+    {'key': 'social',  'label': 'Sosial'},
+    {'key': 'games',   'label': 'Game'},
+    {'key': 'video',   'label': 'Video'},
+    {'key': 'chat',    'label': 'Chat'},
+    {'key': 'browser', 'label': 'Browser'},
+    {'key': 'other',   'label': 'Lainnya'},
+  ];
+
+  List<Map<String, String>> _getFilteredApps(String category) {
+    if (category == 'all') return _popularApps;
+    return _popularApps.where((app) => app['category'] == category).toList();
+  }
+
+  // Popular apps preset list — categorized for filtering
   static const _popularApps = [
-    {'emoji': '📱', 'name': 'TikTok',        'package': 'com.zhiliaoapp.musically'},
-    {'emoji': '📸', 'name': 'Instagram',     'package': 'com.instagram.android'},
-    {'emoji': '▶️', 'name': 'YouTube',        'package': 'com.google.android.youtube'},
-    {'emoji': '💬', 'name': 'WhatsApp',       'package': 'com.whatsapp'},
-    {'emoji': '🎮', 'name': 'Mobile Legends','package': 'com.mobile.legends'},
-    {'emoji': '🔥', 'name': 'Free Fire',      'package': 'com.dts.freefireth'},
-    {'emoji': '🧩', 'name': 'Roblox',        'package': 'com.roblox.client'},
-    {'emoji': '🎬', 'name': 'Netflix',       'package': 'com.netflix.mediaclient'},
-    {'emoji': '🐦', 'name': 'X (Twitter)',   'package': 'com.twitter.android'},
-    {'emoji': '🌐', 'name': 'Chrome',         'package': 'com.android.chrome'},
-    {'emoji': '🎵', 'name': 'Spotify',        'package': 'com.spotify.music'},
-    {'emoji': '🛒', 'name': 'Shopee',         'package': 'com.shopee.id'},
-    {'emoji': '👕', 'name': 'Facebook',      'package': 'com.facebook.katana'},
-    {'emoji': '🎮', 'name': 'Game Kami',     'package': 'com.example.mygame'},
+    // Social media
+    {'emoji': '📱', 'name': 'TikTok',        'package': 'com.zhiliaoapp.musically',  'category': 'social'},
+    {'emoji': '📸', 'name': 'Instagram',     'package': 'com.instagram.android',      'category': 'social'},
+    {'emoji': '👕', 'name': 'Facebook',      'package': 'com.facebook.katana',        'category': 'social'},
+    {'emoji': '🐦', 'name': 'X (Twitter)',   'package': 'com.twitter.android',        'category': 'social'},
+    {'emoji': '📘', 'name': 'Facebook Lite',  'package': 'com.facebook.lite',          'category': 'social'},
+    {'emoji': '📹', 'name': 'SnackVideo',    'package': 'com.snackvideo',             'category': 'social'},
+    {'emoji': '🎵', 'name': 'Lipsync',        'package': 'com.trill.lipsinc',          'category': 'social'},
+    // Games
+    {'emoji': '🎮', 'name': 'Mobile Legends','package': 'com.mobile.legends',          'category': 'games'},
+    {'emoji': '🔥', 'name': 'Free Fire',     'package': 'com.dts.freefireth',         'category': 'games'},
+    {'emoji': '🧩', 'name': 'Roblox',        'package': 'com.roblox.client',           'category': 'games'},
+    {'emoji': '🏎️', 'name': 'PUBG Mobile',   'package': 'com.tencent.ig',             'category': 'games'},
+    {'emoji': '⚽', 'name': 'FIFA Mobile',   'package': 'com.ea.gp.fifamobile',        'category': 'games'},
+    {'emoji': '🎯', 'name': 'Stumble Guys',  'package': 'com.kitkagames.fallbuddies', 'category': 'games'},
+    {'emoji': '🎲', 'name': 'Among Us',      'package': 'com.innersloth.amongus',     'category': 'games'},
+    // Video streaming
+    {'emoji': '▶️', 'name': 'YouTube',        'package': 'com.google.android.youtube', 'category': 'video'},
+    {'emoji': '🎬', 'name': 'Netflix',       'package': 'com.netflix.mediaclient',     'category': 'video'},
+    {'emoji': '🎥', 'name': 'Disney+ Hotstar','package': 'com.disney.starplus',        'category': 'video'},
+    {'emoji': '📺', 'name': 'Vidio',          'package': 'com.vidio',                  'category': 'video'},
+    {'emoji': '🎞️', 'name': 'WeTV',          'package': 'com.mewatch',                 'category': 'video'},
+    // Chat / Messaging
+    {'emoji': '💬', 'name': 'WhatsApp',      'package': 'com.whatsapp',               'category': 'chat'},
+    {'emoji': '💭', 'name': 'Telegram',       'package': 'org.telegram.messenger',      'category': 'chat'},
+    {'emoji': '💙', 'name': 'LINE',          'package': 'jp.naver.line.android',      'category': 'chat'},
+    {'emoji': '📨', 'name': 'Gmail',          'package': 'com.google.android.gm',       'category': 'chat'},
+    {'emoji': '💬', 'name': 'Discord',       'package': 'com.discord',                'category': 'chat'},
+    // Browser
+    {'emoji': '🌐', 'name': 'Chrome',         'package': 'com.android.chrome',         'category': 'browser'},
+    {'emoji': '🌍', 'name': 'Opera Mini',    'package': 'com.opera.mini.native',      'category': 'browser'},
+    {'emoji': '🦊', 'name': 'Firefox',        'package': 'org.mozilla.firefox',       'category': 'browser'},
+    // Other
+    {'emoji': '🎵', 'name': 'Spotify',        'package': 'com.spotify.music',          'category': 'other'},
+    {'emoji': '🛒', 'name': 'Shopee',         'package': 'com.shopee.id',              'category': 'other'},
+    {'emoji': '🛵', 'name': 'Gojek',          'package': 'com.gojek.app',              'category': 'other'},
+    {'emoji': '🚗', 'name': 'Grab',            'package': 'com.grabtaxi.driver.legacy', 'category': 'other'},
+    {'emoji': '📖', 'name': 'Wattpad',         'package': 'wp.wattpad',                 'category': 'other'},
   ];
 
   Future<void> _addRestriction(String appName, String appPackage) async {

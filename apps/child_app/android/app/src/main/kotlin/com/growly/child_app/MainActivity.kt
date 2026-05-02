@@ -86,6 +86,17 @@ class MainActivity : FlutterActivity() {
                     }
                     result.success(success)
                 }
+                "updateRestrictions" -> {
+                    @Suppress("UNCHECKED_CAST")
+                    val lockedApps = call.argument<List<String>>("lockedApps") ?: emptyList()
+                    val allowedApps = call.argument<List<String>>("allowedApps") ?: emptyList()
+                    val screenTimeLimitMinutes = call.argument<Int>("screenTimeLimit") ?: 0
+                    val scheduleStart = call.argument<String>("scheduleStart") ?: ""
+                    val scheduleEnd = call.argument<String>("scheduleEnd") ?: ""
+                    val scheduleMode = call.argument<String>("scheduleMode") ?: ""
+                    updateRestrictions(lockedApps, allowedApps, screenTimeLimitMinutes, scheduleStart, scheduleEnd, scheduleMode)
+                    result.success(true)
+                }
                 "enableKioskMode" -> {
                     val allowedPackage = call.argument<String>("allowedPackage") ?: packageName
                     result.success(enableKioskMode(allowedPackage))
@@ -248,6 +259,26 @@ class MainActivity : FlutterActivity() {
             .remove("allowed_package")
             .apply()
         return true
+    }
+
+    private fun updateRestrictions(
+        lockedApps: List<String>,
+        allowedApps: List<String>,
+        screenTimeLimitMinutes: Int,
+        scheduleStart: String,
+        scheduleEnd: String,
+        scheduleMode: String
+    ) {
+        val prefs = getSharedPreferences("growly_parental", Context.MODE_PRIVATE)
+        prefs.edit()
+            .putStringSet("locked_apps", lockedApps.toSet())
+            .putStringSet("allowed_apps", allowedApps.toSet())
+            .putInt("screen_time_limit_minutes", screenTimeLimitMinutes)
+            .putString("schedule_start", scheduleStart)
+            .putString("schedule_end", scheduleEnd)
+            .putString("schedule_mode", scheduleMode)
+            .apply()
+        android.util.Log.i("Growly", "Restrictions updated: ${lockedApps.size} locked, limit=$screenTimeLimitMinutes min, schedule=$scheduleStart-$scheduleEnd ($scheduleMode)")
     }
 
     // ==================== APP INFO METHODS ====================
