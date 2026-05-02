@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:growly_core/growly_core.dart';
 import '../../../providers/child_activity_providers.dart';
 import '../../../providers/ai_insight_provider.dart';
+import '../../../../ai_memory/providers/ai_memory_provider.dart';
 
 class InsightTab extends ConsumerWidget {
   final String childId;
@@ -74,6 +75,10 @@ class InsightTab extends ConsumerWidget {
           return ListView(padding: const EdgeInsets.all(20), children: [
             // AI-generated insight — highlighted card at top
             _AiInsightCard(aiInsightAsync: aiInsightAsync),
+
+            const SizedBox(height: 4),
+            // Memory profile from AI tutor sessions
+            _MemoryCardWidget(childId: childId),
 
             if (ruleInsights.isNotEmpty) ...[
               const SizedBox(height: 8),
@@ -285,6 +290,145 @@ class _RuleInsightCard extends StatelessWidget {
         return Icons.emoji_events_outlined;
       case InsightType.balanceGood:
         return Icons.check_circle_outline;
+    }
+  }
+}
+
+class _MemoryCardWidget extends ConsumerWidget {
+  final String childId;
+
+  const _MemoryCardWidget({required this.childId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final memoryAsync = ref.watch(childAiMemoryProvider(childId));
+    final progressAsync = ref.watch(aiMemoryProgressProvider(childId));
+
+    return memoryAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (memory) {
+        if (memory == null) return const SizedBox.shrink();
+
+        return Card(
+          color: Colors.deepPurple.shade50,
+          margin: const EdgeInsets.only(bottom: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: Colors.deepPurple.shade200, width: 1),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Text('🧠', style: TextStyle(fontSize: 20)),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Profil AI Tutor',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.deepPurple.shade700,
+                      ),
+                    ),
+                    const Spacer(),
+                    _buildMemoryScore(memory, progressAsync.valueOrNull),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (memory.nickname != null)
+                  _memoryRow('👤', memory.nickname!),
+                if (memory.learningStyle != null)
+                  _memoryRow('📚', memory.learningStyle!),
+                if (memory.lastMood != null)
+                  _memoryRow(_moodEmoji(memory.lastMood!), memory.lastMood!),
+                if (memory.interests.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  const Text('🎯 Minat:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    children: memory.interests.map((i) => Chip(
+                      label: Text(i, style: const TextStyle(fontSize: 10)),
+                      backgroundColor: Colors.deepPurple.shade100,
+                      padding: EdgeInsets.zero,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
+                    )).toList(),
+                  ),
+                ],
+                if (memory.topicMastery.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  const Text('📊 Performa:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 4),
+                  ...memory.topicMastery.entries.take(4).map((e) => Padding(
+                    padding: const EdgeInsets.only(bottom: 3),
+                    child: Row(
+                      children: [
+                        Text(e.value > 0.7 ? '🟢' : e.value > 0.4 ? '🟡' : '🔴', style: const TextStyle(fontSize: 11)),
+                        const SizedBox(width: 4),
+                        Expanded(child: Text(e.key, style: const TextStyle(fontSize: 12))),
+                        Text('${(e.value * 100).toInt()}%', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  )),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMemoryScore(dynamic memory, Map<String, dynamic>? progress) {
+    final totalSessions = progress?['totalSessions'] as int? ?? 0;
+    if (totalSessions == 0) return const SizedBox.shrink();
+
+    final thisWeek = progress?['thisWeekActive'] as bool? ?? false;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.deepPurple.shade100,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.auto_awesome, size: 14, color: Colors.deepPurple.shade700),
+          const SizedBox(width: 4),
+          Text(
+            thisWeek ? 'Aktif' : '$totalSessions sesi',
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.deepPurple.shade700),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _memoryRow(String icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Text(icon, style: const TextStyle(fontSize: 12)),
+          const SizedBox(width: 6),
+          Text(text, style: const TextStyle(fontSize: 13)),
+        ],
+      ),
+    );
+  }
+
+  String _moodEmoji(String mood) {
+    switch (mood) {
+      case 'excited': return '🤩';
+      case 'curious': return '🤔';
+      case 'frustrated': return '😤';
+      default: return '😊';
     }
   }
 }

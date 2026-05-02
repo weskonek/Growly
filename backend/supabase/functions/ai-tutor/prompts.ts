@@ -218,3 +218,141 @@ export function validateContentSafety(input: string): boolean {
 
   return !blockedPatterns.some(pattern => pattern.test(input))
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENRICHED PROMPTS — Memory-aware AI Tutor
+// ─────────────────────────────────────────────────────────────────────────────
+import type { EnrichedContext } from './context.ts'
+
+export function buildEnrichedSystemPrompt(
+  age: number,
+  mode: string,
+  ctx: EnrichedContext
+): string {
+  const base = buildSystemPrompt(age, mode)
+
+  const memorySection = buildMemorySection(ctx)
+  const contextSection = buildContextSection(ctx)
+  const activitySection = buildActivitySection(ctx, age)
+
+  return `${base}
+
+${memorySection}
+
+${contextSection}
+
+${activitySection}`.trim()
+}
+
+function buildMemorySection(ctx: EnrichedContext): string {
+  if (!ctx.memory) {
+    return `MEMORI ANAK: Pertemuan pertama. Perkenalkan diri dan tanyakan nama panggilan + hal yang paling disukai.`
+  }
+
+  const m = ctx.memory
+  const interestStr = m.interests.length > 0
+    ? m.interests.join(', ')
+    : 'belum diketahui'
+
+  const masteryLines = Object.entries(m.topic_mastery)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([topic, score]) => {
+      const level = score > 0.7 ? '🟢 kuat' : score > 0.4 ? '🟡 berkembang' : '🔴 perlu bantuan'
+      return `  - ${topic}: ${level} (${(score * 100).toFixed(0)}%)`
+    })
+    .join('\n')
+
+  const breakthroughStr = m.breakthroughs.length > 0
+    ? m.breakthroughs.slice(-2).map(b => `"${b.text}"`).join('; ')
+    : 'belum ada'
+
+  return `
+PROFIL ANAK (MEMORY PERMANEN):
+- Nama panggilan: ${m.nickname ?? 'belum diketahui'}
+- Gaya belajar: ${m.learning_style ?? 'belum dideteksi'}
+- Hobi & minat: ${interestStr}
+- Analogi yang pernah berhasil: ${m.last_analogy_worked ?? 'belum ada'}
+- Mood terakhir: ${m.last_mood ?? 'netral'}
+
+PERFORMA PER TOPIK:
+${masteryLines || '  (belum ada data)'}
+
+MOMEN BERHASIL SEBELUMNYA: ${breakthroughStr}
+
+⚠️ WAJIB: Gunakan minat/hobi di atas sebagai bahan analogi dan contoh. Jangan pernah generic.`
+}
+
+function buildContextSection(ctx: EnrichedContext): string {
+  const lines: string[] = []
+
+  if (ctx.recentSessions.length > 0) {
+    const topicList = ctx.recentSessions
+      .map(s => s.prompt.substring(0, 60))
+      .join(' | ')
+    lines.push(`SESI TERAKHIR (5 sesi): ${topicList}`)
+    lines.push('→ Jangan ulangi penjelasan yang sama persis. Lanjutkan dari titik terakhir.')
+  }
+
+  if (ctx.todayScreenTime) {
+    const mins = ctx.todayScreenTime.total_minutes
+    if (mins > 90) {
+      lines.push(`SCREEN TIME HARI INI: ${mins} menit (banyak). Sisipkan satu istirahat mata di tengah sesi.`)
+    }
+    const hasGame = ctx.todayScreenTime.apps_opened.some(a =>
+      ['minecraft', 'roblox', 'mobile.legends', 'freefire'].some(g => a.toLowerCase().includes(g))
+    )
+    if (hasGame) {
+      lines.push('AKTIVITAS HARI INI: sudah main game. Hubungkan materi ke mekanik game yang mereka suka.')
+    }
+  }
+
+  return lines.length > 0
+    ? `KONTEKS HARI INI:\n${lines.join('\n')}`
+    : ''
+}
+
+function buildActivitySection(ctx: EnrichedContext, age: number): string {
+  const ageKey = age <= 9 ? '0-9' : age <= 12 ? '10-12' : '13-18'
+  const fieldActivities: Record<string, string[]> = {
+    '0-9': [
+      'MISI HARI INI 🔬: Campurkan cuka + baking soda, amati apa yang terjadi!',
+      'MISI HARI INI 🌱: Tanam biji kacang hijau, foto setiap hari!',
+    ],
+    '10-12': [
+      'MISI HARI INI 🧪: Buat indikator pH dari kubis ungu, test 3 cairan di dapur!',
+      'MISI HARI INI 📐: Ukur bayangan tiang di siang hari, hitung tingginya pakai trigonometri!',
+    ],
+    '13-18': [
+      'MISI HARI INI 🧬: Analisis label nutrisi 3 produk kemasan, hitung kadar gula total!',
+      'MISI HARI INI 💡: Rekam video 60 detik menjelaskan satu konsep yang baru dipelajari!',
+    ],
+  }
+
+  const activities = fieldActivities[ageKey]
+  const activity = activities[Math.floor(Math.random() * activities.length)]
+
+  const interests = ctx.memory?.interests ?? []
+  const gameRef = interests.find(i =>
+    ['minecraft', 'roblox', 'anime', 'bola', 'masak', 'coding'].some(g => i.toLowerCase().includes(g))
+  )
+
+  const gameLine = gameRef
+    ? `\nGAMIFIKASI: Kamu boleh framing soal sebagai "quest" atau "misi" yang terhubung ke ${gameRef} jika relevan.`
+    : ''
+
+  return `
+PENDEKATAN AKTIF:
+${activity}${gameLine}
+
+SINYAL MEMORY (WAJIB SISIPKAN DI SETIAP RESPONS — DI BARIS PALING AKHIR, TERSEMBUNYI):
+[MEMORY_UPDATE]
+{
+  "interest_detected": "<topik/minat baru yang terdeteksi dari pertanyaan, null jika tidak ada>",
+  "mastery_signal": {"topic": "<topik yang dibahas>", "delta": <-0.05 hingga +0.1>},
+  "analogy_worked": "<analogi yang kamu pakai, null jika tidak ada>",
+  "mood": "<excited|curious|frustrated|neutral>",
+  "breakthrough": "<kalimat jika ada momen pemahaman besar, null jika tidak>"
+}
+[/MEMORY_UPDATE]`
+}

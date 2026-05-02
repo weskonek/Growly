@@ -1,5 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { loadChildContext } from './context.ts'
+import { buildEnrichedSystemPrompt } from './prompts.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -315,8 +317,9 @@ serve(async (req) => {
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // Build prompts
-    const systemPrompt = buildSystemPrompt(age, mode)
+    // Build prompts with memory context
+    const ctx = await loadChildContext(supabase, childId)
+    const systemPrompt = buildEnrichedSystemPrompt(age, mode, ctx)
     const userPrompt = buildUserPrompt(question, child.name, age)
 
     // Call Gemini
@@ -345,7 +348,7 @@ serve(async (req) => {
     }
 
     // Log session to database
-    await supabase.from('ai_tutor_sessions').insert({
+    const sessionInsert = await supabase.from('ai_tutor_sessions').insert({
       child_id: childId,
       mode,
       prompt: question,
@@ -355,6 +358,34 @@ serve(async (req) => {
       flagged: shouldFlag,
       flag_reason: finalFlagReason
     })
+    const sessionId = sessionInsert.data?.[0]?.id
+
+    // Strip and queue memory signal (non-blocking)
+    const memoryMatch = aiContent.match(/\[MEMORY_UPDATE\]([\s\S]*?)\[\/MEMORY_UPDATE\]/)
+    if (memoryMatch) {
+      aiContent = aiContent.replace(/\[MEMORY_UPDATE\][\s\S]*?\[\/MEMORY_UPDATE\]/g, '').trim()
+      try {
+        const signal = JSON.parse(memoryMatch[1].trim())
+        // Queue for async processing
+        supabase.from('ai_memory_updates').insert({
+          child_id: childId,
+          session_id: sessionId ?? null,
+          payload: signal,
+          processed: false,
+        }).then(() => {
+          // Apply immediately via RPC
+          supabase.rpc('apply_memory_update', {
+            p_child_id: childId,
+            p_interest: signal.interest_detected ?? null,
+            p_topic: signal.mastery_signal?.topic ?? null,
+            p_delta: signal.mastery_signal?.delta ?? 0,
+            p_analogy_worked: signal.analogy_worked ?? null,
+            p_mood: signal.mood ?? null,
+            p_breakthrough: signal.breakthrough ?? null,
+          })
+        }).catch(() => {/* silent - memory is non-critical path */})
+      } catch (_) {/* silent */}
+    }
 
     // Log to audit_logs
     await supabase.from('audit_logs').insert({
