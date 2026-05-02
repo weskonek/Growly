@@ -52,7 +52,7 @@ export async function loadChildContext(
 
     // Layer 3: Screen time hari ini
     supabase
-      .from('screen_time_logs')
+      .from('screen_time_records')
       .select('duration_minutes, app_package')
       .eq('child_id', childId)
       .eq('date', today),

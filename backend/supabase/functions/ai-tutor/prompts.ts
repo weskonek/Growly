@@ -269,9 +269,10 @@ function buildMemorySection(ctx: EnrichedContext): string {
 
   return `
 PROFIL ANAK (MEMORY PERMANEN):
-- Nama panggilan: ${m.nickname ?? 'belum diketahui'}
+- Nama panggilan: ${m.nickname ?? 'belum diketahui'} ← gunakan ini saat berbicara
 - Gaya belajar: ${m.learning_style ?? 'belum dideteksi'}
-- Hobi & minat: ${interestStr}
+  → Perhatikan: jika anak suka gambar → "visual"; suka main/sentuh → "kinesthetic"; suka denger → "auditory"
+- Hobi & minat: ${interestStr} ← WAJIB gunakan ini untuk contoh/analogi
 - Analogi yang pernah berhasil: ${m.last_analogy_worked ?? 'belum ada'}
 - Mood terakhir: ${m.last_mood ?? 'netral'}
 
@@ -352,7 +353,9 @@ SINYAL MEMORY (WAJIB SISIPKAN DI SETIAP RESPONS — DI BARIS PALING AKHIR, TERSE
   "mastery_signal": {"topic": "<topik yang dibahas>", "delta": <-0.05 hingga +0.1>},
   "analogy_worked": "<analogi yang kamu pakai, null jika tidak ada>",
   "mood": "<excited|curious|frustrated|neutral>",
-  "breakthrough": "<kalimat jika ada momen pemahaman besar, null jika tidak>"
+  "breakthrough": "<kalimat jika ada momen pemahaman besar, null jika tidak>",
+  "nickname": "<nama panggilan yang disebut anak sendiri, null jika belum ada>",
+  "learning_style": "<visual|kinesthetic|auditory|reading, null jika belum terdeteksi>"
 }
 [/MEMORY_UPDATE]`
 }

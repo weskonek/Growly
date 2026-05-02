@@ -61,6 +61,8 @@ serve(async (req) => {
           p_analogy_worked: signal.analogy_worked ?? null,
           p_mood: signal.mood ?? null,
           p_breakthrough: signal.breakthrough ?? null,
+          p_nickname: signal.nickname ?? null,
+          p_learning_style: signal.learning_style ?? null,
         })
 
         if (rpcError) {
