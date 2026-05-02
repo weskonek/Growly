@@ -145,127 +145,122 @@ class _AppLockPageState extends ConsumerState<AppLockPage> {
   void _showAddAppSheet(BuildContext context) {
     _appNameController.clear();
     _appPackageController.clear();
-    String _selectedCategory = 'all';
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheetState) => DraggableScrollableSheet(
-          initialChildSize: 0.85,
-          minChildSize: 0.5,
-          maxChildSize: 0.95,
-          expand: false,
-          builder: (_, scrollController) => SingleChildScrollView(
-            controller: scrollController,
-            child: Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-                left: 24,
-                right: 24,
-                top: 24,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Handle
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(2),
+      builder: (ctx) {
+        String selectedCategory = 'all';
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) => DraggableScrollableSheet(
+            initialChildSize: 0.85,
+            minChildSize: 0.5,
+            maxChildSize: 0.95,
+            expand: false,
+            builder: (_, scrollController) => SingleChildScrollView(
+              controller: scrollController,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+                  left: 24,
+                  right: 24,
+                  top: 24,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text('Tambah Aplikasi', style: Theme.of(ctx).textTheme.titleLarge),
-                  const SizedBox(height: 16),
-
-                  // Category filter chips
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: _categories.map((cat) {
-                        final selected = _selectedCategory == cat['key'];
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: FilterChip(
-                            label: Text(cat['label']!),
-                            selected: selected,
-                            onSelected: (_) => setSheetState(() => _selectedCategory = cat['key']!),
-                          ),
+                    const SizedBox(height: 16),
+                    Text('Tambah Aplikasi', style: Theme.of(ctx).textTheme.titleLarge),
+                    const SizedBox(height: 16),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: _categories.map((cat) {
+                          final selected = selectedCategory == cat['key'];
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: FilterChip(
+                              label: Text(cat['label']!),
+                              selected: selected,
+                              onSelected: (_) => setSheetState(() => selectedCategory = cat['key']!),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text('Pilih aplikasi:', style: Theme.of(ctx).textTheme.titleSmall),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _getFilteredApps(selectedCategory).map((app) {
+                        return ActionChip(
+                          avatar: Text(app['emoji']!),
+                          label: Text(app['name']!, style: const TextStyle(fontSize: 12)),
+                          backgroundColor: Theme.of(ctx).colorScheme.surfaceContainerHighest,
+                          onPressed: () {
+                            _appNameController.text = app['name']!;
+                            _appPackageController.text = app['package']!;
+                          },
                         );
                       }).toList(),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Filtered preset grid
-                  Text('Pilih aplikasi:', style: Theme.of(ctx).textTheme.titleSmall),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: _getFilteredApps(_selectedCategory).map((app) {
-                      return ActionChip(
-                        avatar: Text(app['emoji']!),
-                        label: Text(app['name']!, style: const TextStyle(fontSize: 12)),
-                        backgroundColor: Theme.of(ctx).colorScheme.surfaceContainerHighest,
-                        onPressed: () {
-                          _appNameController.text = app['name']!;
-                          _appPackageController.text = app['package']!;
-                        },
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // App name
-                  TextField(
-                    controller: _appNameController,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: const InputDecoration(
-                      labelText: 'Nama Aplikasi',
-                      border: OutlineInputBorder(),
-                      hintText: 'Ketik manual jika tidak ada di atas',
+                    const SizedBox(height: 20),
+                    TextField(
+                      controller: _appNameController,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(
+                        labelText: 'Nama Aplikasi',
+                        border: OutlineInputBorder(),
+                        hintText: 'Ketik manual jika tidak ada di atas',
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _appPackageController,
-                    decoration: const InputDecoration(
-                      labelText: 'Package Name',
-                      border: OutlineInputBorder(),
-                      hintText: 'com.example.app',
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _appPackageController,
+                      decoration: const InputDecoration(
+                        labelText: 'Package Name',
+                        border: OutlineInputBorder(),
+                        hintText: 'com.example.app',
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  FilledButton(
-                    onPressed: () async {
-                      final appName = _appNameController.text.trim();
-                      if (appName.isEmpty) {
-                        ScaffoldMessenger.of(ctx).showSnackBar(
-                          const SnackBar(content: Text('Nama aplikasi wajib diisi')),
-                        );
-                        return;
-                      }
-                      var appPackage = _appPackageController.text.trim();
-                      if (appPackage.isEmpty) {
-                        appPackage = 'com.growly.locked.${appName.toLowerCase().replaceAll(' ', '_').replaceAll(RegExp(r'[^a-z0-9_]'), '')}';
-                      }
-                      Navigator.pop(ctx);
-                      await _addRestriction(appName, appPackage);
-                    },
-                    child: const Text('Tambah'),
-                  ),
-                ],
+                    const SizedBox(height: 24),
+                    FilledButton(
+                      onPressed: () async {
+                        final appName = _appNameController.text.trim();
+                        if (appName.isEmpty) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            const SnackBar(content: Text('Nama aplikasi wajib diisi')),
+                          );
+                          return;
+                        }
+                        var appPackage = _appPackageController.text.trim();
+                        if (appPackage.isEmpty) {
+                          appPackage = 'com.growly.locked.${appName.toLowerCase().replaceAll(' ', '_').replaceAll(RegExp(r'[^a-z0-9_]'), '')}';
+                        }
+                        Navigator.pop(ctx);
+                        await _addRestriction(appName, appPackage);
+                      },
+                      child: const Text('Tambah'),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 

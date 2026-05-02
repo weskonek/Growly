@@ -1,9 +1,46 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 enum AlertEvent {
   accessibilityRevoked,
   usageStatsRevoked,
   screenTimeExhausted,
+}
+
+extension AlertEventX on AlertEvent {
+  String get key {
+    switch (this) {
+      case AlertEvent.accessibilityRevoked:
+        return 'accessibility_revoked';
+      case AlertEvent.usageStatsRevoked:
+        return 'usage_stats_revoked';
+      case AlertEvent.screenTimeExhausted:
+        return 'screen_time_exceeded';
+    }
+  }
+
+  String get title {
+    switch (this) {
+      case AlertEvent.accessibilityRevoked:
+        return '⚠️ Pengawasan Dinonaktifkan';
+      case AlertEvent.usageStatsRevoked:
+        return '⚠️ Izin Statistik Dicabut';
+      case AlertEvent.screenTimeExhausted:
+        return '⏰ Waktu Layar Habis';
+    }
+  }
+
+  String bodyFor(String childName) {
+    switch (this) {
+      case AlertEvent.accessibilityRevoked:
+        return '$childName telah menonaktifkan layanan pengawasan Growly. Kontrol orang tua mungkin tidak aktif.';
+      case AlertEvent.usageStatsRevoked:
+        return '$childName mencabut izin statistik penggunaan. Pemantauan aplikasi terganggu.';
+      case AlertEvent.screenTimeExhausted:
+        return 'Waktu layar harian $childName telah habis. Perangkat sekarang dibatasi.';
+    }
+  }
 }
 
 class NotificationAlertService {
@@ -29,17 +66,26 @@ class NotificationAlertService {
     required String parentId,
     required AlertEvent event,
   }) async {
-    if (_isThrottled(event)) return;
+    if (_isThrottled(event)) {
+      debugPrint('[Alert] Throttled: ${event.key}');
+      return;
+    }
 
-    final (title, body) = _eventLabels(event);
-    final type = _eventType(event);
+    final childRow = await _supabase
+        .from('child_profiles')
+        .select('name')
+        .eq('id', childId)
+        .maybeSingle();
+
+    final childName = (childRow?['name'] as String?) ?? 'Anak';
+    final body = event.bodyFor(childName);
 
     final resp = await _supabase.from('notifications').insert({
       'parent_id': parentId,
       'child_id': childId,
-      'title': title,
+      'title': event.title,
       'body': body,
-      'type': type,
+      'type': event.key,
       'is_read': false,
     }).select('id').single();
 
@@ -50,38 +96,20 @@ class NotificationAlertService {
         'notification_id': notificationId,
         'parent_id': parentId,
         'child_id': childId,
-        'title': title,
+        'title': event.title,
         'body': body,
-        'type': type,
+        'type': event.key,
       });
     } catch (_) {
-      // Edge function failure is non-fatal — notification is in DB
+      // Non-fatal — notification is in DB
     }
 
     _markSent(event);
+    debugPrint('[Alert] Sent: ${event.key} for child $childId → parent $parentId');
   }
 
-  (String, String) _eventLabels(AlertEvent event) {
-    switch (event) {
-      case AlertEvent.accessibilityRevoked:
-        return ('⚠️ Proteksi Dinonaktifkan',
-            'Izin aksesibilitas Growly telah dinonaktifkan di perangkat ini.');
-      case AlertEvent.usageStatsRevoked:
-        return ('⚠️ Akses Stats Dimatikan',
-            'Izin Usage Stats telah dicabut. Screen time tidak bisa dipantau.');
-      case AlertEvent.screenTimeExhausted:
-        return ('⏰ Waktu Layar Habis',
-            'Anak telah menghabiskan batas waktu layar hari ini.');
-    }
-  }
-
-  String _eventType(AlertEvent event) {
-    switch (event) {
-      case AlertEvent.accessibilityRevoked:
-      case AlertEvent.usageStatsRevoked:
-        return 'alert';
-      case AlertEvent.screenTimeExhausted:
-        return 'screen_time_alert';
-    }
+  @visibleForTesting
+  void resetThrottle(AlertEvent event) {
+    _sentLog.remove(event);
   }
 }
