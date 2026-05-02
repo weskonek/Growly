@@ -63,7 +63,7 @@ async function createMidtransSnapToken(
     },
   }
 
-  const resp = await fetch('https://app.midtrans.com/v2 charge', {
+  const resp = await fetch('https://app.midtrans.com/v2/charge', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

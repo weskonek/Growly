@@ -20,6 +20,7 @@ class SnapWebViewPage extends StatefulWidget {
 class _SnapWebViewPageState extends State<SnapWebViewPage> {
   late final WebViewController _controller;
   bool _isLoading = true;
+  bool _resultReturned = false;
   String? _errorMessage;
 
   @override
@@ -97,8 +98,8 @@ class _SnapWebViewPageState extends State<SnapWebViewPage> {
   }
 
   void _finishWith(PaymentResult result) {
-    if (!mounted) return;
-    // Prevent double-calling if page finishes multiple times
+    if (!mounted || _resultReturned) return;
+    _resultReturned = true;
     setState(() => _isLoading = false);
     Navigator.of(context).pop(result);
   }
