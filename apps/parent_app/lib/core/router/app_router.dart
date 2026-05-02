@@ -65,7 +65,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       }
 
       if (!isLoggedIn && !isAuthRoute) return '/auth/login';
-      if (isLoggedIn && isAuthRoute) return '/dashboard';
+
+      // If logged-in user is on auth routes, check onboarding first
+      if (isLoggedIn && isAuthRoute) {
+        final onb = ref.read(onboardingCompletedProvider).valueOrNull ?? true;
+        return onb ? '/dashboard' : '/onboarding';
+      }
 
       // First navigation after login — check onboarding
       if (isLoggedIn && isSplash) {
