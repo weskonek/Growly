@@ -17,14 +17,13 @@ import '../widgets/child_shell.dart';
 final verifiedChildIdProvider = StateProvider<String?>((ref) => null);
 
 /// Bridges Riverpod StateProvider to go_router's refreshListenable.
+/// FIX: Use ref.container from the main tree, NOT a new ProviderContainer.
 class _VerifiedIdNotifier extends ChangeNotifier {
-  _VerifiedIdNotifier(this._container) {
-    _container.listen(verifiedChildIdProvider, (_, __) {
+  _VerifiedIdNotifier(Ref ref) {
+    ref.listen(verifiedChildIdProvider, (_, __) {
       notifyListeners();
     });
   }
-
-  final ProviderContainer _container;
 }
 
 /// Shell route builder — wraps all post-PIN routes with bottom nav
@@ -34,22 +33,22 @@ Widget _shellBuilder(BuildContext context, GoRouterState state, Widget child) {
 
 /// Router provider for child app with PIN gate + bottom navigation.
 final childRouterProvider = Provider<GoRouter>((ref) {
-  final container = ProviderContainer();
-  ref.onDispose(container.dispose);
+  // FIX Bug A: use ref directly — connected to the widget tree
+  final notifier = _VerifiedIdNotifier(ref);
+  ref.onDispose(notifier.dispose);
 
   return GoRouter(
     initialLocation: '/launcher',
     redirect: (context, state) {
-      // Always allow /launcher
       if (state.matchedLocation == '/launcher') return null;
 
-      // PIN gate: redirect to launcher if not verified
-      final verifiedId = container.read(verifiedChildIdProvider);
+      // FIX Bug A: read from the correct ref (widget tree), not a separate container
+      final verifiedId = ref.read(verifiedChildIdProvider);
       if (verifiedId == null) return '/launcher';
 
       return null;
     },
-    refreshListenable: _VerifiedIdNotifier(container),
+    refreshListenable: notifier,
     routes: [
       // PIN gate — outside shell
       GoRoute(
@@ -105,16 +104,13 @@ final childRouterProvider = Provider<GoRouter>((ref) {
                 name: 'store',
                 builder: (context, state) => const GrowlyStorePage(),
               ),
-              GoRoute(
-                path: 'profile',
-                name: 'profile',
-                builder: (context, state) => const ChildProfilePage(),
-              ),
+              // FIX Bug B removed: sub-route 'profile' under rewards no longer exists
+              // Only /profile top-level route exists below
             ],
           ),
           GoRoute(
             path: '/profile',
-            name: 'profile',
+            name: 'profile', // ✅ only one route with this name
             builder: (context, state) => const ChildProfilePage(),
           ),
         ],
