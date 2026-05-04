@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -67,8 +68,10 @@ class ScreenTimeUploadService {
             records,
             onConflict: 'child_id,app_package,date',
           );
-    } catch (e) {
-      // Silent failure — don't crash the app over screen time upload
+    } catch (e, stackTrace) {
+      debugPrint('[ScreenTime] Upload failed: $e');
+      debugPrint('[ScreenTime] Stack: $stackTrace');
+      // Silent failure for production, but visible during development
     }
   }
 
