@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'router/app_router.dart';
-import 'services/fcm_service.dart' show pendingDeepLinkProvider;
+import 'services/fcm_service_stub.dart' show pendingDeepLinkProvider;
 import 'theme/app_theme.dart';
 
 class GrowlyParentApp extends ConsumerWidget {
