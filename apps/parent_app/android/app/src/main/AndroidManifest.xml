@@ -1,7 +1,8 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.growly.parent_app">
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="parent_app"
+        android:label="Growly Parent"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true"

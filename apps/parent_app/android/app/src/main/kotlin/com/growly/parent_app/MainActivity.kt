@@ -1,4 +1,4 @@
-package com.example.parent_app
+package com.growly.parent_app
 
 import io.flutter.embedding.android.FlutterActivity
 

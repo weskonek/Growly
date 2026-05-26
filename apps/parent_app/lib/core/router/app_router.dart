@@ -50,7 +50,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       // Guard: while auth state is still loading, show splash
       if (authState.isLoading) return '/splash';
-      final isLoggedIn = authState.valueOrNull!.session != null;
+
+      // Handle auth error or null state
+      final authValue = authState.valueOrNull;
+      if (authState.hasError || authValue == null) {
+        return '/auth/login';
+      }
+
+      final isLoggedIn = authValue.session != null;
       final isAuthRoute = state.matchedLocation.startsWith('/auth');
       final isSplash = state.matchedLocation == '/splash';
       final isOnboarding = state.matchedLocation == '/onboarding';
@@ -93,6 +100,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
+      // Home redirect to splash
+      GoRoute(
+        path: '/',
+        redirect: (_, __) => '/splash',
+      ),
       // Splash shown while auth state is being resolved
       GoRoute(
         path: '/splash',

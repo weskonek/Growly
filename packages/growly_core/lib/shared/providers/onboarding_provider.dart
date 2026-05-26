@@ -21,10 +21,16 @@ Future<void> completeOnboarding(WidgetRef ref) async {
   final userId = Supabase.instance.client.auth.currentUser?.id;
   if (userId == null) return;
 
-  await Supabase.instance.client
+  final resp = await Supabase.instance.client
       .from('parent_profiles')
       .update({'onboarding_completed': true})
-      .eq('id', userId);
+      .eq('id', userId)
+      .select('id')
+      .maybeSingle();
+
+  if (resp == null) {
+    throw Exception('Gagal menyelesaikan onboarding. Data profil tidak ditemukan.');
+  }
 
   ref.invalidate(onboardingCompletedProvider);
 }

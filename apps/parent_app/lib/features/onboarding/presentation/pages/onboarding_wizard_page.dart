@@ -126,8 +126,17 @@ class _OnboardingWizardPageState extends ConsumerState<OnboardingWizardPage> {
 
   Future<void> _finishOnboarding() async {
     setState(() => _loading = true);
-    await completeOnboarding(ref);
-    if (mounted) context.go('/dashboard');
+    try {
+      await completeOnboarding(ref);
+      if (mounted) context.go('/dashboard');
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal menyelesaikan onboarding: $e')),
+        );
+      }
+    }
   }
 
   @override
