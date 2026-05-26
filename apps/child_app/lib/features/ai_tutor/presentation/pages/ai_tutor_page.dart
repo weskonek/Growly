@@ -318,7 +318,7 @@ class _AiTutorPageState extends ConsumerState<AiTutorPage> {
           context: context,
           builder: (ctx) => AlertDialog(
             title: const Text('Keluar dari AI Tutor?'),
-            content: const Text('Percakapan ini tidak akan tersimpan.'),
+            content: const Text('Kamu bisa lanjutkan percakapan lain waktu.'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),

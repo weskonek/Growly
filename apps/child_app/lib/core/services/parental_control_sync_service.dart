@@ -3,15 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Syncs app restriction rules from Supabase → device SharedPrefs
 /// so that GrowlyAccessibilityService can enforce them.
-///
-/// The enforcement loop:
-/// Parent locks app → Supabase app_restrictions INSERT/UPDATE
-///   → Realtime push → ParentalControlSyncService._syncRestrictionsToDevice()
-///   → MethodChannel updateRestrictions → SharedPrefs["locked_apps"]
-///   → GrowlyAccessibilityService reads SharedPrefs → app is blocked ✅
 class ParentalControlSyncService {
-  static const _channel = MethodChannel('com.growly/android_parental_control');
-
   final SupabaseClient _supabase;
   RealtimeChannel? _realtimeChannel;
   RealtimeChannel? _scheduleChannel;
@@ -22,10 +14,8 @@ class ParentalControlSyncService {
   /// Subscribe to Supabase Realtime and push current restrictions to device.
   Future<void> startSync(String childId) async {
     _currentChildId = childId;
-    // 1. Immediate sync of current state
     await _syncRestrictionsToDevice(childId);
     await _syncScheduleToDevice(childId);
-    // 2. Subscribe to live changes
     _realtimeChannel?.unsubscribe();
     _realtimeChannel = _supabase
         .channel('restrictions-sync-$childId')
@@ -59,7 +49,6 @@ class ParentalControlSyncService {
         .subscribe();
   }
 
-  /// Stop listening and cancel sync.
   void stopSync() {
     _realtimeChannel?.unsubscribe();
     _scheduleChannel?.unsubscribe();
@@ -68,7 +57,6 @@ class ParentalControlSyncService {
     _currentChildId = null;
   }
 
-  /// Read all restrictions from Supabase and push to native via updateRestrictions.
   Future<void> _syncRestrictionsToDevice(String childId) async {
     try {
       final rows = await _supabase
@@ -89,8 +77,8 @@ class ParentalControlSyncService {
         }
       }
 
-      // Push all at once via updateRestrictions
-      await _channel.invokeMethod('updateRestrictions', {
+      final channel = MethodChannel('com.growly/android_parental_control');
+      await channel.invokeMethod('updateRestrictions', <String, dynamic>{
         'lockedApps': locked,
         'allowedApps': allowed,
         'screenTimeLimit': 0,
@@ -98,16 +86,20 @@ class ParentalControlSyncService {
         'scheduleEnd': '',
         'scheduleMode': '',
       });
-    } catch (e) {
-      // Silent failure — enforcement will use last known state from SharedPrefs
-    }
+
+      if (locked.length > 0) {
+        final channel2 = MethodChannel('com.growly/android_parental_control');
+        await channel2.invokeMethod('enableKioskMode', <String, dynamic>{
+          'allowedPackage': 'com.growly.child_app',
+        });
+      }
+    } catch (_) {}
   }
 
-  /// Read active schedule and push to native.
   Future<void> _syncScheduleToDevice(String childId) async {
     try {
       final now = DateTime.now();
-      final dayOfWeek = now.weekday; // 1=Mon ... 7=Sun
+      final dayOfWeek = now.weekday;
 
       final rows = await _supabase
           .from('schedules')
@@ -123,7 +115,6 @@ class ParentalControlSyncService {
       final endTime = schedule['end_time']?.toString() ?? '';
       final mode = schedule['mode']?.toString() ?? '';
 
-      // Get current screen time limit from screen_time_rules
       final stRows = await _supabase
           .from('screen_time_rules')
           .select('daily_limit_minutes')
@@ -132,7 +123,6 @@ class ParentalControlSyncService {
 
       final limitMinutes = (stRows?['daily_limit_minutes'] as int?) ?? 0;
 
-      // Also get locked apps to push with schedule
       final restrictionRows = await _supabase
           .from('app_restrictions')
           .select('app_package, is_allowed')
@@ -149,7 +139,8 @@ class ParentalControlSyncService {
         }
       }
 
-      await _channel.invokeMethod('updateRestrictions', {
+      final channel = MethodChannel('com.growly/android_parental_control');
+      await channel.invokeMethod('updateRestrictions', <String, dynamic>{
         'lockedApps': locked,
         'allowedApps': allowed,
         'screenTimeLimit': limitMinutes,
@@ -157,12 +148,16 @@ class ParentalControlSyncService {
         'scheduleEnd': endTime,
         'scheduleMode': mode,
       });
-    } catch (e) {
-      // Silent failure
-    }
+
+      if (locked.length > 0) {
+        final channel2 = MethodChannel('com.growly/android_parental_control');
+        await channel2.invokeMethod('enableKioskMode', <String, dynamic>{
+          'allowedPackage': 'com.growly.child_app',
+        });
+      }
+    } catch (_) {}
   }
 
-  /// Force a one-shot sync (useful after permission changes).
   Future<void> forceSync() async {
     if (_currentChildId != null) {
       await _syncRestrictionsToDevice(_currentChildId!);

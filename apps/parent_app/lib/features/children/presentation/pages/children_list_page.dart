@@ -40,25 +40,51 @@ class ChildrenListPage extends ConsumerWidget {
         data: (children) {
           if (children.isEmpty) {
             return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.child_care, size: 80, color: Colors.grey.shade300),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Belum ada profil anak',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: Colors.grey.shade600,
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Tambah profil anak untuk memulai',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey.shade500,
-                        ),
-                  ),
-                ],
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.child_care,
+                        size: 64,
+                        color: Colors.blue.shade300,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Belum ada profil anak',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            color: Colors.grey.shade700,
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Tambah profil anak untuk mulai mengawasi dan membantu pertumbuhan mereka',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Colors.grey.shade500,
+                          ),
+                    ),
+                    const SizedBox(height: 32),
+                    FilledButton.icon(
+                      onPressed: () => context.go('/children/add'),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Tambah Anak Pertama'),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           }

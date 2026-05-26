@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/weskonek/.pub-cache/**)",
+      "Bash(grep -rn \"class RealtimeChannel\" /Users/weskonek/.pub-cache/hosted/pub.dev/supabase_flutter-*/lib/)",
+      "Bash(grep -A3 \"name: supabase_flutter$\" /Users/weskonek/WeskonekWeb/Growly/Growly/pubspec.lock)",
+      "Bash(grep -B2 \"name: supabase_flutter$\" /Users/weskonek/WeskonekWeb/Growly/Growly/pubspec.lock)",
+      "Bash(python3 -c ':*)",
+      "Bash(flutter --version)",
+      "Bash(dart analyze:*)",
+      "Bash(grep -rn \"class MethodChannel\" /Users/weskonek/.pub-cache/hosted/pub.dev/flutter_services-*/)",
+      "Bash(ls /Users/weskonek/WeskonekWeb/Growly/Growly/apps/child_app/android/settings.gradle* /Users/weskonek/WeskonekWeb/Growly/Growly/apps/child_app/android/gradle.properties)",
+      "Bash(ls -la /Users/weskonek/WeskonekWeb/Growly/Growly/apps/child_app/android/settings.gradle* /Users/weskonek/WeskonekWeb/Growly/Growly/apps/child_app/android/build.gradle*)"
+    ]
+  }
+}

@@ -56,6 +56,46 @@ class AiTutorNotifier extends AsyncNotifier<AiTutorState> {
       connectTimeout: const Duration(seconds: 15),
       receiveTimeout: const Duration(seconds: 30),
     ));
+
+    // Load chat history from previous sessions (last 10 sessions = ~20 messages)
+    try {
+      final child = await ref.read(launcher.currentChildProvider.future);
+      if (child != null) {
+        final historyData = await Supabase.instance.client
+            .from('ai_tutor_sessions')
+            .select('id, prompt, response, mode, created_at')
+            .eq('child_id', child.id)
+            .eq('flagged', false)
+            .order('created_at', ascending: true)
+            .limit(10);
+
+        final history = List<Map<String, dynamic>>.from(historyData as List);
+        if (history.isNotEmpty) {
+          final messages = <ChatMessage>[];
+          for (final session in history) {
+            final ts = DateTime.parse(session['created_at'] as String);
+            messages.add(ChatMessage(
+              id: '${session['id']}_user',
+              content: session['prompt'] as String,
+              isAI: false,
+              timestamp: ts,
+              mode: session['mode'] as String?,
+            ));
+            messages.add(ChatMessage(
+              id: '${session['id']}_ai',
+              content: session['response'] as String,
+              isAI: true,
+              timestamp: ts.add(const Duration(milliseconds: 100)),
+              mode: session['mode'] as String?,
+            ));
+          }
+          return AiTutorState(messages: messages);
+        }
+      }
+    } catch (_) {
+      // Non-critical — start fresh if history load fails
+    }
+
     return const AiTutorState();
   }
 
