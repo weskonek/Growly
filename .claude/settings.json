@@ -10,7 +10,15 @@
       "Bash(dart analyze:*)",
       "Bash(grep -rn \"class MethodChannel\" /Users/weskonek/.pub-cache/hosted/pub.dev/flutter_services-*/)",
       "Bash(ls /Users/weskonek/WeskonekWeb/Growly/Growly/apps/child_app/android/settings.gradle* /Users/weskonek/WeskonekWeb/Growly/Growly/apps/child_app/android/gradle.properties)",
-      "Bash(ls -la /Users/weskonek/WeskonekWeb/Growly/Growly/apps/child_app/android/settings.gradle* /Users/weskonek/WeskonekWeb/Growly/Growly/apps/child_app/android/build.gradle*)"
+      "Bash(ls -la /Users/weskonek/WeskonekWeb/Growly/Growly/apps/child_app/android/settings.gradle* /Users/weskonek/WeskonekWeb/Growly/Growly/apps/child_app/android/build.gradle*)",
+      "mcp__supabase__list_tables",
+      "mcp__supabase__list_edge_functions",
+      "Bash(java -version)",
+      "Bash(./gradlew --stop)",
+      "Bash(pkill -f \"GradleDaemon\")",
+      "Bash(pkill -9 -f \"GradleDaemon\")",
+      "Bash(pkill -9 -f \"gradle\")",
+      "Bash(rm -rf ~/.gradle/daemon ~/.gradle/caches/8.* ~/.gradle/caches/transforms-* ~/.gradle/daemon)"
     ]
   }
 }
