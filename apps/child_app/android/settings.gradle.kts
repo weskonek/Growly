@@ -1,3 +1,5 @@
+rootProject.name = "child_app_android"
+
 pluginManagement {
     val flutterSdkPath =
         run {
