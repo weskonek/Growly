@@ -1,11 +1,10 @@
--- Migration 0031: Create notifications table + fix notification_log FK
--- Required FK reference from migration 0026 which creates notification_log
--- that references notifications(id) ON DELETE CASCADE — but notifications table was never created.
+-- Migration 0031: Create notifications table + related infrastructure for FCM push notifications
+-- Apply via: Supabase Dashboard SQL Editor or supabase db push
 
 -- ============================================================
 -- 1. notifications table — parent-visible notification records
 -- ============================================================
-CREATE TABLE public.notifications (
+CREATE TABLE IF NOT EXISTS public.notifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     parent_id UUID NOT NULL REFERENCES public.parent_profiles(id) ON DELETE CASCADE,
     child_id UUID REFERENCES public.child_profiles(id) ON DELETE SET NULL,
@@ -24,13 +23,13 @@ CREATE TABLE public.notifications (
 -- ============================================================
 -- 2. Indexes for query performance
 -- ============================================================
-CREATE INDEX idx_notifications_parent_id
+CREATE INDEX IF NOT EXISTS idx_notifications_parent_id
     ON public.notifications(parent_id);
 
-CREATE INDEX idx_notifications_created_at
+CREATE INDEX IF NOT EXISTS idx_notifications_created_at
     ON public.notifications(created_at DESC);
 
-CREATE INDEX idx_notifications_parent_unread
+CREATE INDEX IF NOT EXISTS idx_notifications_parent_unread
     ON public.notifications(parent_id, is_read)
     WHERE is_read = FALSE;
 
@@ -45,6 +44,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS notifications_updated_at ON public.notifications;
 CREATE TRIGGER notifications_updated_at
     BEFORE UPDATE ON public.notifications
     FOR EACH ROW EXECUTE FUNCTION public.handle_notification_updated_at();
@@ -54,55 +54,63 @@ CREATE TRIGGER notifications_updated_at
 -- ============================================================
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
--- Parents can only SELECT their own notifications
+DROP POLICY IF EXISTS "Parents can view own notifications" ON public.notifications;
 CREATE POLICY "Parents can view own notifications"
     ON public.notifications FOR SELECT
     USING (auth.uid() = parent_id);
 
--- Parents can UPDATE (mark as read) their own notifications
+DROP POLICY IF EXISTS "Parents can update own notifications" ON public.notifications;
 CREATE POLICY "Parents can update own notifications"
     ON public.notifications FOR UPDATE
     USING (auth.uid() = parent_id)
     WITH CHECK (auth.uid() = parent_id);
 
--- Service role can do everything (used by edge functions)
+DROP POLICY IF EXISTS "Service role can manage notifications" ON public.notifications;
 CREATE POLICY "Service role can manage notifications"
     ON public.notifications FOR ALL
     USING (auth.jwt()->>'role' = 'service_role')
     WITH CHECK (auth.jwt()->>'role' = 'service_role');
 
--- Anonymous/anon key can INSERT (admin sends on behalf of parent)
--- Edge function is the actual gatekeeper; this policy enables service
--- role client via anon key + service role bypass in edge function.
+DROP POLICY IF EXISTS "Service role can insert notifications" ON public.notifications;
 CREATE POLICY "Service role can insert notifications"
     ON public.notifications FOR INSERT
     WITH CHECK (auth.jwt()->>'role' = 'service_role');
 
 -- ============================================================
--- 5. Fix notification_log FK → make notification_id nullable
---    The FK references notifications(id) but that table didn't exist.
---    edge function inserts notification_log independently so we
---    cannot enforce the FK without transactions spanning both tables.
+-- 5. notification_log table — tracks FCM delivery status
 -- ============================================================
-ALTER TABLE notification_log
-    DROP CONSTRAINT IF EXISTS notification_log_notification_id_fkey;
+CREATE TABLE IF NOT EXISTS public.notification_log (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    parent_id UUID REFERENCES public.parent_profiles(id) ON DELETE CASCADE,
+    notification_id UUID REFERENCES public.notifications(id) ON DELETE SET NULL,
+    fcm_sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    fcm_status TEXT CHECK (fcm_status IN ('sent', 'failed', 'invalid_token')),
+    error_message TEXT
+);
 
-ALTER TABLE notification_log
-    ALTER COLUMN notification_id DROP NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_notification_log_parent_id
+    ON public.notification_log(parent_id);
+
+CREATE INDEX IF NOT EXISTS idx_notification_log_notification_id
+    ON public.notification_log(notification_id);
+
+ALTER TABLE public.notification_log ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Service role can manage notification_log" ON public.notification_log;
+CREATE POLICY "Service role can manage notification_log"
+    ON public.notification_log FOR ALL
+    USING (auth.jwt()->>'role' = 'service_role')
+    WITH CHECK (auth.jwt()->>'role' = 'service_role');
 
 -- ============================================================
--- 6. Fix any pre-existing rows with orphaned notification_id values
--- (graceful: set them to NULL rather than failing)
+-- 6. Add fcm_token to parent_profiles (for FCM push delivery)
 -- ============================================================
-UPDATE notification_log
-SET notification_id = NULL
-WHERE notification_id IS NOT NULL
-  AND NOT EXISTS (SELECT 1 FROM notifications WHERE notifications.id = notification_log.notification_id);
+ALTER TABLE public.parent_profiles
+    ADD COLUMN IF NOT EXISTS fcm_token TEXT,
+    ADD COLUMN IF NOT EXISTS fcm_token_updated_at TIMESTAMPTZ;
 
--- Add a check constraint to ensure we never have orphaned FKs going forward
-ALTER TABLE notification_log
-    ADD CONSTRAINT notification_log_notification_id_exists
-    CHECK (
-        notification_id IS NULL
-        OR EXISTS (SELECT 1 FROM notifications WHERE notifications.id = notification_log.notification_id)
-    );
+DROP POLICY IF EXISTS "Parents can update own fcm_token" ON public.parent_profiles;
+CREATE POLICY "Parents can update own fcm_token"
+    ON public.parent_profiles FOR UPDATE
+    USING (auth.uid() = id)
+    WITH CHECK (auth.uid() = id);

@@ -26,7 +26,13 @@
       "Bash(melos bootstrap:*)",
       "Bash(flutter pub:*)",
       "Read(//Users/weskonek/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.7/skills/subagent-driven-development/**)",
-      "Bash(xxd)"
+      "Bash(xxd)",
+      "mcp__plugin_supabase_supabase__list_projects",
+      "mcp__plugin_supabase_supabase__apply_migration",
+      "mcp__plugin_supabase_supabase__execute_sql",
+      "mcp__plugin_supabase_supabase__list_tables",
+      "Bash(supabase --version)",
+      "mcp__plugin_supabase_supabase__get_advisors"
     ]
   }
 }
