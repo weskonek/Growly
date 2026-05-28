@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:growly_core/growly_core.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../providers/child_providers.dart'
     show selectedChildDetailProvider, updateChildProvider, deleteChildProvider;
@@ -21,6 +22,7 @@ class _ChildDetailPageState extends ConsumerState<ChildDetailPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isEditing = false;
+  bool _isGeneratingCode = false;
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
 
@@ -173,6 +175,12 @@ class _ChildDetailPageState extends ConsumerState<ChildDetailPage>
           onPressed: () => context.go('/parental-control'),
           icon: const Icon(Icons.security),
           label: const Text('Kelola Kontrol Orang Tua'),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: () => _showPairingQr(child),
+          icon: const Icon(Icons.qr_code_2),
+          label: const Text('Tampilkan QR'),
         ),
         const SizedBox(height: 12),
         OutlinedButton.icon(
@@ -365,6 +373,46 @@ class _ChildDetailPageState extends ConsumerState<ChildDetailPage>
       SnackBar(content: Text(message)),
     );
   }
+
+  Future<void> _showPairingQr(ChildProfile child) async {
+    String? code = child.pairingCode;
+
+    // Lazy-generate pairing code if null (backward compat for existing children)
+    if (code == null) {
+      setState(() => _isGeneratingCode = true);
+      try {
+        await Supabase.instance.client.rpc('generate_pairing_code', params: {
+          'p_child_id': child.id,
+        });
+        // Refetch child data to get the generated code
+        ref.invalidate(selectedChildDetailProvider(widget.childId));
+        final updated = await ref.read(selectedChildDetailProvider(widget.childId).future);
+        code = updated?.pairingCode;
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Gagal membuat kode pairing'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() => _isGeneratingCode = false);
+        return;
+      }
+      if (!mounted) return;
+      setState(() => _isGeneratingCode = false);
+      if (code == null) return;
+    }
+
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (_) => _ExistingChildQrDialog(
+        childName: child.name,
+        pairingCode: code,
+      ),
+    );
+  }
 }
 
 class _InfoTile extends StatelessWidget {
@@ -407,6 +455,101 @@ class _DestructiveButton extends StatelessWidget {
       style: OutlinedButton.styleFrom(
         side: const BorderSide(color: Colors.red),
       ),
+    );
+  }
+}
+
+class _ExistingChildQrDialog extends StatelessWidget {
+  final String childName;
+  final String pairingCode;
+
+  const _ExistingChildQrDialog({
+    required this.childName,
+    required this.pairingCode,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final qrData = 'growly://pair/$pairingCode';
+
+    return AlertDialog(
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(20)),
+      ),
+      title: Row(
+        children: [
+          Icon(Icons.qr_code_2, color: cs.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'QR $childName',
+              style: const TextStyle(fontSize: 18),
+            ),
+          ),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade200, width: 2),
+            ),
+            child: QrImageView(
+              data: qrData,
+              version: QrVersions.auto,
+              size: 200,
+              eyeStyle: const QrEyeStyle(
+                eyeShape: QrEyeShape.square,
+                color: Color(0xFF1A1A2E),
+              ),
+              dataModuleStyle: const QrDataModuleStyle(
+                dataModuleShape: QrDataModuleShape.square,
+                color: Color(0xFF1A1A2E),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Pindai dengan aplikasi Growly di HP anak.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            decoration: BoxDecoration(
+              color: cs.primaryContainer,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              pairingCode,
+              style: TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 6,
+                fontFamily: 'monospace',
+                color: cs.primary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'atau ketik kode di atas secara manual',
+            style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Tutup'),
+        ),
+      ],
     );
   }
 }
