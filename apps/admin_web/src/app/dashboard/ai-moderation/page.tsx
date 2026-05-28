@@ -149,6 +149,12 @@ export default async function AIModerationPage() {
                     sessionId={session.id}
                     parentId={session.child_profiles?.parent_profiles?.id}
                     childId={session.child_profiles?.id}
+                    childName={session.child_profiles?.name ?? 'Unknown'}
+                    flaggedUserMessages={
+                      session.ai_tutor_messages
+                        ?.filter((m) => m.role === 'user')
+                        ?.map((m) => m.content) ?? []
+                    }
                   />
                 </div>
               </CardContent>

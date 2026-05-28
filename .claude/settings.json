@@ -18,7 +18,15 @@
       "Bash(pkill -f \"GradleDaemon\")",
       "Bash(pkill -9 -f \"GradleDaemon\")",
       "Bash(pkill -9 -f \"gradle\")",
-      "Bash(rm -rf ~/.gradle/daemon ~/.gradle/caches/8.* ~/.gradle/caches/transforms-* ~/.gradle/daemon)"
+      "Bash(rm -rf ~/.gradle/daemon ~/.gradle/caches/8.* ~/.gradle/caches/transforms-* ~/.gradle/daemon)",
+      "Bash(grep -r \"CREATE TABLE\" /Users/weskonek/WeskonekWeb/Growly/Growly/backend/supabase/migrations/*.sql)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(git worktree:*)",
+      "Bash(melos bootstrap:*)",
+      "Bash(flutter pub:*)",
+      "Read(//Users/weskonek/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.7/skills/subagent-driven-development/**)",
+      "Bash(xxd)"
     ]
   }
 }

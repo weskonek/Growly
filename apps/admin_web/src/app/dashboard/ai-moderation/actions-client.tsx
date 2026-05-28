@@ -6,7 +6,6 @@ import {
   Bell,
   Ban,
   Trash2,
-  MoreHorizontal,
 } from 'lucide-react'
 import { useState } from 'react'
 import {
@@ -15,17 +14,22 @@ import {
   blockChildAction,
   deleteSessionAction,
 } from './actions'
+import { toast } from 'sonner'
 
 interface AiModerationActionsProps {
   sessionId: string
   parentId?: string
   childId?: string
+  childName: string
+  flaggedUserMessages: string[]
 }
 
 export function AiModerationActions({
   sessionId,
   parentId,
   childId,
+  childName,
+  flaggedUserMessages,
 }: AiModerationActionsProps) {
   const [loading, setLoading] = useState<string | null>(null)
 
@@ -38,8 +42,29 @@ export function AiModerationActions({
   const handleWarn = async () => {
     if (!parentId) return
     setLoading('warn')
-    await warnParentAction(sessionId, parentId)
+
+    const result = await warnParentAction(
+      sessionId,
+      parentId,
+      childName,
+      flaggedUserMessages,
+    )
+
     setLoading(null)
+
+    if (result.success) {
+      if (result.fcmSent) {
+        toast.success('Notifikasi push terkirim ke orang tua')
+      } else {
+        toast.info('Notifikasi tersimpan. FCM token belum terdaftar di perangkat orang tua.')
+      }
+    } else {
+      if (result.error === 'insert_failed') {
+        toast.error('Gagal menyimpan notifikasi')
+      } else {
+        toast.error('Gagal mengirim notifikasi: ' + result.message)
+      }
+    }
   }
 
   const handleBlock = async () => {
@@ -50,7 +75,11 @@ export function AiModerationActions({
   }
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this session? This action cannot be undone.')) {
+    if (
+      !confirm(
+        'Are you sure you want to delete this session? This action cannot be undone.',
+      )
+    ) {
       return
     }
     setLoading('delete')
@@ -67,7 +96,7 @@ export function AiModerationActions({
         disabled={loading !== null}
       >
         <Check className="h-4 w-4 mr-1" />
-        {loading === 'dismiss' ? 'Dismissing...' : 'Dismiss'}
+        {loading === 'dismiss' ? 'Dismissing…' : 'Dismiss'}
       </Button>
       <Button
         variant="outline"
@@ -76,7 +105,7 @@ export function AiModerationActions({
         disabled={loading !== null || !parentId}
       >
         <Bell className="h-4 w-4 mr-1" />
-        {loading === 'warn' ? 'Notifying...' : 'Warn Parent'}
+        {loading === 'warn' ? 'Notifying…' : 'Warn Parent'}
       </Button>
       <Button
         variant="outline"
@@ -85,7 +114,7 @@ export function AiModerationActions({
         disabled={loading !== null || !childId}
       >
         <Ban className="h-4 w-4 mr-1" />
-        {loading === 'block' ? 'Blocking...' : 'Block Child'}
+        {loading === 'block' ? 'Blocking…' : 'Block Child'}
       </Button>
       <Button
         variant="destructive"
@@ -94,7 +123,7 @@ export function AiModerationActions({
         disabled={loading !== null}
       >
         <Trash2 className="h-4 w-4 mr-1" />
-        {loading === 'delete' ? 'Deleting...' : 'Delete'}
+        {loading === 'delete' ? 'Deleting…' : 'Delete'}
       </Button>
     </div>
   )

@@ -45,7 +45,11 @@ dependencies:
   uuid: ^4.4.0
   device_info_plus: ^10.1.0
 
-  # Notifications (Firebase removed — FCM not yet implemented)
+  # Firebase / FCM push notifications
+  firebase_core: ^3.0.0
+  firebase_messaging: ^15.0.0
+
+  # Notifications (local notifications)
   flutter_local_notifications: ^17.2.2
 
   # Payment

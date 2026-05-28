@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/services/fcm_service_stub.dart' show pendingDeepLinkProvider;
+import '../../core/services/fcm_service.dart' show pendingDeepLinkProvider, getPendingDeepLink, clearPendingDeepLink;
 
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
@@ -62,7 +62,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isSplash = state.matchedLocation == '/splash';
       final isOnboarding = state.matchedLocation == '/onboarding';
 
-      // If app was opened from a FCM notification tap, navigate to that deep link
+      // Handle FCM cold-start deep link (app opened from killed state).
+      // Provider ref is not reliably available here for cold starts,
+      // so we also check the module-level getter.
+      final fcmDeepLink = getPendingDeepLink();
+      if (fcmDeepLink != null && isLoggedIn) {
+        Future.microtask(clearPendingDeepLink);
+        return fcmDeepLink;
+      }
+
+      // Handle FCM deep link from Riverpod provider (app was in background)
       if (pendingDeepLink != null && isLoggedIn) {
         final target = pendingDeepLink;
         Future.microtask(() {
