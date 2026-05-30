@@ -409,7 +409,7 @@ class _ChildDetailPageState extends ConsumerState<ChildDetailPage>
       context: context,
       builder: (_) => _ExistingChildQrDialog(
         childName: child.name,
-        pairingCode: code,
+        pairingCode: code!,
       ),
     );
   }

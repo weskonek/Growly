@@ -12,9 +12,7 @@ import '../../features/rewards/presentation/pages/rewards_page.dart';
 import '../../features/store/presentation/pages/growly_store_page.dart';
 import '../../features/profile/presentation/pages/child_profile_page.dart';
 import '../widgets/child_shell.dart';
-
-/// Tracks whether the child has been verified via PIN gate
-final verifiedChildIdProvider = StateProvider<String?>((ref) => null);
+import 'verified_id_provider.dart';
 
 /// Bridges Riverpod StateProvider to go_router's refreshListenable.
 /// FIX: Use ref.container from the main tree, NOT a new ProviderContainer.

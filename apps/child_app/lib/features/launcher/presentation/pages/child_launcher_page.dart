@@ -7,7 +7,7 @@ import 'package:growly_core/growly_core.dart' hide currentChildProvider;
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:child_app/features/launcher/providers/launcher_providers.dart';
-import 'package:child_app/core/router/child_router.dart';
+import 'package:child_app/core/router/verified_id_provider.dart';
 import 'package:child_app/core/services/services_providers.dart';
 import 'package:child_app/core/services/notification_alert_service.dart' show AlertEvent;
 
