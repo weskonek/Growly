@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../local/hive_service.dart';
 
 class SyncManager {
   final SupabaseClient _supabase;
@@ -12,19 +13,20 @@ class SyncManager {
     _isSyncing = true;
 
     try {
-      // TODO: Implement offline sync with HiveService
-      // final queue = HiveService.getOfflineQueue();
-      // for (int i = 0; i < queue.length; i++) {
-      //   final item = queue[i];
-      //   final operation = item['operation'] as String;
-      //   final data = item['data'] as Map<String, dynamic>;
-      //   try {
-      //     await _processOperation(operation, data);
-      //     await HiveService.removeFromOfflineQueue(i);
-      //   } catch (e) {
-      //     // Keep in queue for retry
-      //   }
-      // }
+      final queue = HiveService.getOfflineQueue();
+      for (int i = 0; i < queue.length; i++) {
+        final item = queue[i];
+        final operation = item['operation'] as String;
+        final data = item['data'] as Map<String, dynamic>;
+        try {
+          await _processOperation(operation, data);
+          await HiveService.removeFromOfflineQueue(i);
+          // Adjust index since we removed an item
+          i--;
+        } catch (e) {
+          // Keep in queue for retry later
+        }
+      }
     } finally {
       _isSyncing = false;
     }
@@ -54,7 +56,7 @@ class SyncManager {
       await _processOperation(operation, {'table': table, 'record': record});
     } catch (e) {
       // Offline - add to queue
-      // TODO: Implement offline queue with HiveService
+      await HiveService.addToOfflineQueue(operation, {'table': table, 'record': record});
     }
   }
 

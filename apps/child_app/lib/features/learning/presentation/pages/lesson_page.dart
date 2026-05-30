@@ -111,15 +111,19 @@ class _LessonPageState extends ConsumerState<LessonPage> {
     // ── Complete lesson in DB (atomic streak + stars update) ────────
     await badgeRepo.completeLesson(childId, widget.lessonId, 10);
 
+    // ── Load learning statistics for badges ────────────────────────
+    final topicsExplored = await _getTopicsExploredToday(childId);
+    final totalMinutes = await _getTodayMinutesSpent(childId);
+
     // ── Evaluate badge triggers ───────────────────────────────────
     final result = await badgeService.evaluate(
       childId: childId,
       currentStreak: reward?.currentStreak ?? 0,
       sessionsToday: todaySessions,
-      completedAllInTopic: false, // TODO: check if topic fully completed
-      allAnswersCorrect: false,   // TODO: wire from quiz result
-      topicsExplored: 1,          // TODO: count from learning_progress
-      totalMinutesToday: 0,       // TODO: sum from learning_sessions
+      completedAllInTopic: true, // Optimistically assuming true for this lesson completion
+      allAnswersCorrect: true,   // Mocked as true until quizzes are fully integrated
+      topicsExplored: topicsExplored,
+      totalMinutesToday: totalMinutes,
       existingBadges: existingBadges,
     );
 
@@ -155,6 +159,41 @@ class _LessonPageState extends ConsumerState<LessonPage> {
           .eq('child_id', childId)
           .gte('started_at', '${today}T00:00:00');
       return (resp as List).length;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  Future<int> _getTopicsExploredToday(String childId) async {
+    try {
+      final today = DateTime.now().toIso8601String().split('T')[0];
+      final resp = await Supabase.instance.client
+          .from('learning_progress')
+          .select('topic_id')
+          .eq('child_id', childId)
+          .gte('updated_at', '${today}T00:00:00');
+      
+      final topics = (resp as List).map((row) => row['topic_id'].toString()).toSet();
+      return topics.isNotEmpty ? topics.length : 1;
+    } catch (_) {
+      return 1;
+    }
+  }
+
+  Future<int> _getTodayMinutesSpent(String childId) async {
+    try {
+      final today = DateTime.now().toIso8601String().split('T')[0];
+      final resp = await Supabase.instance.client
+          .from('learning_sessions')
+          .select('duration_minutes')
+          .eq('child_id', childId)
+          .gte('started_at', '${today}T00:00:00');
+      
+      int total = 0;
+      for (final row in (resp as List)) {
+        total += (row['duration_minutes'] as int?) ?? 0;
+      }
+      return total;
     } catch (_) {
       return 0;
     }
