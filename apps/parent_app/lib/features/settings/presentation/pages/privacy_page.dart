@@ -133,9 +133,9 @@ class _PrivacyPageState extends ConsumerState<PrivacyPage> {
                 ),
           ),
           const SizedBox(height: 8),
-          Card(
+          const Card(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -144,13 +144,13 @@ class _PrivacyPageState extends ConsumerState<PrivacyPage> {
                     title: 'Tidak ikuti pengumpulan data',
                     desc: 'Matikan semua opsi pengumpulan data di atas.',
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   _PrivacyRightItem(
                     icon: Icons.download,
                     title: 'Unduh data anak',
                     desc: 'Minta salinan data yang kami kumpulkan tentang anak Anda.',
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   _PrivacyRightItem(
                     icon: Icons.delete_forever,
                     title: 'Hapus semua data',
@@ -206,7 +206,7 @@ class _PrivacyPageState extends ConsumerState<PrivacyPage> {
                 );
                 if (ctx.mounted) Navigator.pop(ctx);
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  ScaffoldMessenger.of(this.context).showSnackBar(
                     const SnackBar(content: Text('Password berhasil diubah')),
                   );
                 }
@@ -241,7 +241,7 @@ class _PrivacyPageState extends ConsumerState<PrivacyPage> {
                 'parent_id': Supabase.instance.client.auth.currentUser?.id,
               });
               if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
+                ScaffoldMessenger.of(this.context).showSnackBar(
                   const SnackBar(
                     content: Text('Permintaan penghapusan data telah dikirim. Tim kami akan menghubungi Anda.'),
                     backgroundColor: Colors.orange,

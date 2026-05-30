@@ -22,7 +22,6 @@ class _ChildDetailPageState extends ConsumerState<ChildDetailPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isEditing = false;
-  bool _isGeneratingCode = false;
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
 
@@ -379,7 +378,6 @@ class _ChildDetailPageState extends ConsumerState<ChildDetailPage>
 
     // Lazy-generate pairing code if null (backward compat for existing children)
     if (code == null) {
-      setState(() => _isGeneratingCode = true);
       try {
         await Supabase.instance.client.rpc('generate_pairing_code', params: {
           'p_child_id': child.id,
@@ -396,11 +394,9 @@ class _ChildDetailPageState extends ConsumerState<ChildDetailPage>
             backgroundColor: Colors.red,
           ),
         );
-        setState(() => _isGeneratingCode = false);
         return;
       }
       if (!mounted) return;
-      setState(() => _isGeneratingCode = false);
       if (code == null) return;
     }
 

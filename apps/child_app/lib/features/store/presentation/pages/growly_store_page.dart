@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:growly_core/growly_core.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../core/router/child_router.dart';
+import 'package:child_app/core/router/verified_id_provider.dart' show verifiedChildIdProvider;
 
 /// Current child — from launcher providers (PIN-gated, FutureProvider)
 final _launcherChildProvider = FutureProvider<ChildProfile?>((ref) async {

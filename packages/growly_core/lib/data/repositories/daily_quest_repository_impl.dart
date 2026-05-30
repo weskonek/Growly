@@ -77,7 +77,7 @@ class DailyQuestRepositoryImpl implements IDailyQuestRepository {
           .eq('quest_id', questId)
           .maybeSingle();
 
-      final defMap = defResponse as Map<String, dynamic>?;
+      final defMap = defResponse;
       final starsReward = (defMap?['stars_reward'] as int?) ?? 2;
 
       // Mark quest as completed
@@ -102,7 +102,7 @@ class DailyQuestRepositoryImpl implements IDailyQuestRepository {
         });
       } catch (_) {}
 
-      return (DailyQuest.fromJson(updated as Map<String, dynamic>), null);
+      return (DailyQuest.fromJson(updated), null);
     } catch (e) {
       return (null, DatabaseFailure(message: e.toString()));
     }
@@ -118,7 +118,7 @@ class DailyQuestRepositoryImpl implements IDailyQuestRepository {
           .eq('quest_id', questId)
           .maybeSingle();
 
-      final map = row as Map<String, dynamic>?;
+      final map = row;
       return ((map?['current_value'] as int?) ?? 0, null);
     } catch (e) {
       return (0, DatabaseFailure(message: e.toString()));

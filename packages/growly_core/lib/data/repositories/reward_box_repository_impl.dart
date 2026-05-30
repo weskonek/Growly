@@ -55,7 +55,7 @@ class RewardBoxRepositoryImpl implements IRewardBoxRepository {
           .select()
           .single();
 
-      return (RewardBox.fromJson(created as Map<String, dynamic>), null);
+      return (RewardBox.fromJson(created), null);
     } catch (e) {
       return (null, DatabaseFailure(message: e.toString()));
     }
@@ -74,7 +74,7 @@ class RewardBoxRepositoryImpl implements IRewardBoxRepository {
           .select()
           .single();
 
-      return (RewardBox.fromJson(updated as Map<String, dynamic>), null);
+      return (RewardBox.fromJson(updated), null);
     } catch (e) {
       return (null, DatabaseFailure(message: e.toString()));
     }

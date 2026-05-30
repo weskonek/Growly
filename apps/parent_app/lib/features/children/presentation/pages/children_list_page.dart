@@ -110,6 +110,7 @@ class ChildrenListPage extends ConsumerWidget {
 
   Future<void> _onAddChildTap(BuildContext context, WidgetRef ref) async {
     final canAdd = await ref.read(canAddChildProvider.future);
+    if (!context.mounted) return;
     if (!canAdd) {
       await showDialog(
         context: context,

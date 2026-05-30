@@ -61,7 +61,7 @@ class LauncherCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(0.4),
+              color: color.withValues(alpha: 0.4),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -116,7 +116,7 @@ class SubjectCard extends StatelessWidget {
             width: 64,
             height: 64,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.2),
+              color: color.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Center(
@@ -279,7 +279,6 @@ class ScreenTimeIndicator extends StatelessWidget {
     final percentage = minutes / limitMinutes;
     final isOk = percentage < 0.8;
     final isWarning = percentage >= 0.8 && percentage < 1.0;
-    final isOver = percentage >= 1.0;
 
     Color statusColor;
     String statusText;
@@ -301,7 +300,7 @@ class ScreenTimeIndicator extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -328,7 +327,7 @@ class ScreenTimeIndicator extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.2),
+                color: statusColor.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(

@@ -172,7 +172,7 @@ class _NotificationTile extends ConsumerWidget {
             : Container(
                 width: 8,
                 height: 8,
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: Colors.blue,
                   shape: BoxShape.circle,
                 ),

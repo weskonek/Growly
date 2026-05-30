@@ -12,9 +12,9 @@ class HelpPage extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _HelpSection(
+          const _HelpSection(
             title: 'Pertanyaan Umum',
-            items: const [
+            items: [
               _HelpItem(
                 icon: Icons.person_add,
                 question: 'Bagaimana cara menambahkan profil anak?',
@@ -43,9 +43,9 @@ class HelpPage extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 24),
-          _HelpSection(
+          const _HelpSection(
             title: 'Hubungi Kami',
-            items: const [
+            items: [
               _HelpItem(
                 icon: Icons.email,
                 question: 'Email',

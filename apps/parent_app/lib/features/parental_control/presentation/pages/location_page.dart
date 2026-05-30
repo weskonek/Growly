@@ -36,7 +36,7 @@ class _DevicesPageState extends ConsumerState<DevicesPage> {
             child: child,
             devicesAsync: devicesAsync,
             isRegistering: _isRegistering,
-            onRegister: () => _registerCurrentDevice(context),
+            onRegister: () => _registerCurrentDevice(),
             onSetCurrent: _setCurrentDevice,
             onRemove: _removeDevice,
           );
@@ -45,7 +45,7 @@ class _DevicesPageState extends ConsumerState<DevicesPage> {
     );
   }
 
-  Future<void> _registerCurrentDevice(BuildContext context) async {
+  Future<void> _registerCurrentDevice() async {
     setState(() => _isRegistering = true);
 
     try {

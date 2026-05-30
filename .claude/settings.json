@@ -32,7 +32,16 @@
       "mcp__plugin_supabase_supabase__execute_sql",
       "mcp__plugin_supabase_supabase__list_tables",
       "Bash(supabase --version)",
-      "mcp__plugin_supabase_supabase__get_advisors"
+      "mcp__plugin_supabase_supabase__get_advisors",
+      "Read(//Library/Java/JavaVirtualMachines/**)",
+      "Bash(/usr/libexec/java_home -V)",
+      "Read(//Applications/Android Studio.app/Contents/jbr/Contents/Home/bin/**)",
+      "Bash(brew list *)",
+      "Bash(export JAVA_HOME=\"/Applications/Android Studio.app/Contents/jbr/Contents/Home\")",
+      "Bash(./gradlew --version)"
+    ],
+    "additionalDirectories": [
+      "/Users/weskonek/Library/Application Support/Antigravity/User"
     ]
   }
 }

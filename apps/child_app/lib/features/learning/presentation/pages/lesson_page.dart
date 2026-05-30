@@ -5,7 +5,7 @@ import 'package:growly_core/growly_core.dart' hide learningRepositoryProvider;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:child_app/features/learning/providers/learning_providers.dart';
 import 'package:child_app/features/rewards/providers/rewards_providers.dart';
-import 'package:child_app/core/router/child_router.dart' show verifiedChildIdProvider;
+import 'package:child_app/core/router/verified_id_provider.dart';
 
 class LessonPage extends ConsumerStatefulWidget {
   final String subjectId;

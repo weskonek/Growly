@@ -78,7 +78,7 @@ class StoreRepositoryImpl implements IStoreRepository {
           .eq('id', itemId)
           .maybeSingle();
 
-      final itemMap = itemData as Map<String, dynamic>?;
+      final itemMap = itemData;
       if (itemMap == null) {
         return (null, DatabaseFailure(message: 'Item tidak ditemukan'));
       }

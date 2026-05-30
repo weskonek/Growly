@@ -102,7 +102,7 @@ class _SchoolModePageState extends ConsumerState<SchoolModePage> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<int>(
-                value: selectedDay,
+                initialValue: selectedDay,
                 decoration: const InputDecoration(labelText: 'Hari'),
                 items: List.generate(
                   7,
